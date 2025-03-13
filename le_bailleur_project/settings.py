@@ -13,6 +13,9 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 from pathlib import Path
 from celery import Celery  
 from celery.schedules import crontab
+import dj_database_url
+import os
+
 
 # Initialize the Celery application  
 app = Celery('le_bailleur_project')  
@@ -41,8 +44,9 @@ SECRET_KEY = 'django-insecure-1c+gwr0rinfxwskn02su&zfi*w-^=eeiyci037pxa7(yon2jxh
 DEBUG = True
 
 ALLOWED_HOSTS = [
-    localhost,
-    LE_BAILLEUR.onrender.com
+    "localhost",
+    "127.0.0.1",
+    "Le_bailleur.onrender.com",
 ]
 
 
@@ -141,3 +145,17 @@ STATIC_URL = 'static/'
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+STATIC_URL = '/static/'
+
+# Use Whitenoise for serving static files
+MIDDLEWARE.insert(1, 'whitenoise.middleware.WhiteNoiseMiddleware')
+
+# Database Configuration for Render
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
+    }
+}
