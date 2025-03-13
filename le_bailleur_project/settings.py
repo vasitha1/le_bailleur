@@ -46,7 +46,7 @@ DEBUG = True
 ALLOWED_HOSTS = [
     "localhost",
     "127.0.0.1",
-    "Le_bailleur.onrender.com",
+    "Le-bailleur.onrender.com",
 ]
 
 
