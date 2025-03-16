@@ -6,8 +6,12 @@ from .models import Property, Tenant, Landlord
 from .serializers import PropertySerializer, TenantSerializer, LandlordSerializer
 import json
 import requests
+from django.views.generic import TemplateView
 
-# Django REST Framework views for Landlord, Property, and Tenant
+
+class HomeView(TemplateView):  
+    template_name = 'le_bailleur_templates/index.html' 
+
 class CreateLandlord(generics.CreateAPIView):
     queryset = Landlord.objects.all()
     serializer_class = LandlordSerializer
