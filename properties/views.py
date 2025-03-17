@@ -7,6 +7,7 @@ from .serializers import PropertySerializer, TenantSerializer, LandlordSerialize
 import json
 import requests
 from django.views.generic import TemplateView
+from .utils import *
 
 
 class HomeView(TemplateView):  
@@ -56,28 +57,22 @@ class WhatsAppWebhook(APIView):
     
     def prompt_for_name(self, sender_number):
         """ Send a message prompting the user for their name. """
-        self.send_whatsapp_message(sender_number, "Hello! Please provide your name to get started.")
+        self.send_whatsapp_message(sender_number, "Welcome! I am \"Le Bailleur\", your rent management automatic assistant. If you are a landlord searching for a way to seamlessly get notified and notify your tenants when rents are due, we are going to take your property and tenant information to effectively track your rents and notify both you and your tenants when rents are due. Please start by entering your name")
     
     def handle_name_response(self, name, sender_number):
         """ Handle the response containing the user's name. """
         landlord = Landlord.objects.create(whatsapp_number=sender_number, name=name)
         self.send_whatsapp_message(sender_number, f"Thank you, {name}! You are now logged in.")
     
-    def send_whatsapp_message(self, to, message):
-        url = "https://api.whatsapp.com/v1/messages"  # Adjust URL based on your provider
-        headers = {
-            'Authorization': 'Bearer YOUR_ACCESS_TOKEN',
-            'Content-Type': 'application/json'
-        }
-        payload = {
-            'to': to,
-            'type': 'text',
-            'text': {
-                'body': message
-            }
-        }
-        try:
-            response = requests.post(url, headers=headers, json=payload)
-            response.raise_for_status()  # Raises an error for bad responses
-        except requests.exceptions.RequestException as e:
-            print(f"Error sending message: {e}")
+    def prompt_for_property_name(self, sender_number):
+        """ Send a message prompting the user for their property name. """
+        self.send_whatsapp_message(sender_number, "Please enter the name of the property you'll like to manage"
+
+    def prompt_for_property_adress(self, sender_number):
+        """ Send a message prompting the user for their property name. """
+        self.send_whatsapp_message(sender_number, "Please enter the adress (Country-town-quarter-PO. Box) of the property")
+
+    def handle_name_response(self, property_name, property_adress, landlord.name, sender_number):
+        property = Property.objects.create(name=property_name, adress=property_adress, landlord=landlord.name)
+
+    

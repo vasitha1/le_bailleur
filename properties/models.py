@@ -19,11 +19,15 @@ class Property(models.Model):
     def __str__(self):  
         return self.name  
 
+class RentEntity(models.Model):
+    name = models.CharField(max_length=255) #Can be what ever he wants to rent out; room, appartment, condo, machine....
+    rent_amount = models.DecimalField(max_digits=10, decimal_places=2)
+    property = models.ForeignKey(Property, on_delete=models.CASCADE, related_name='rent_entity')
+
 class Tenant(models.Model):  
     property = models.ForeignKey(Property, on_delete=models.CASCADE, related_name='tenants')  
     name = models.CharField(max_length=200)  
-    whatsapp_number = models.CharField(max_length=20)  
-    rent_amount = models.DecimalField(max_digits=10, decimal_places=2)  
+    whatsapp_number = models.CharField(max_length=20)    
     start_of_payment_cycle = models.DateField()  # The date when the current payment cycle starts  
     bills_due_date = models.DateField()  # Bills due date  
     last_rent_paid = models.DateField(null=True, blank=True)  # Last rent payment date  
