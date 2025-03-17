@@ -5,8 +5,7 @@ from django.conf import settings
 
 def send_whatsapp_message(phone_number, message):
     """Function to send a message via WhatsApp."""
-    print(f"Attempting to send message to {phone_number}")
-    
+
     headers = {'Authorization': settings.WHATSAPP_TOKEN}
     payload = {
         'messaging_product': 'whatsapp',
@@ -15,14 +14,11 @@ def send_whatsapp_message(phone_number, message):
         'type': 'text',
         'text': {'body': message}
     }
-    
-    print(f"Request URL: {settings.WHATSAPP_URL}")
-    print(f"Request Payload: {json.dumps(payload, indent=2)}")
-    
+
     try:
         response = requests.post(settings.WHATSAPP_URL, headers=headers, json=payload)
-        print(f"Response Status Code: {response.status_code}")
-        print(f"Response Content: {response.text}")
+        print(f"Response Status Code: {response.status_code}") #for debugging
+        print(f"Response Content: {response.text}") #For debugging
         
         if response.status_code == 200:
             response_json = response.json()
