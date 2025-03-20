@@ -68,7 +68,7 @@ def whatsapp_webhook(request):
                         
                         # If you want to send a reply
                         phone_number = '23798827753'  # Consider using the sender_number instead
-                        message = 'Re: ' + response  # Use the response from process_message
+                        message = 'Re: Thank you Felsi!' # Use the response from process_message
                         
                         # Add code to send the response back using WhatsApp API
                         send_message(message, phone_number)
