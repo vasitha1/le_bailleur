@@ -55,23 +55,25 @@ def whatsapp_webhook(request):
         try:
             data = json.loads(request.body)
             # Process the incoming webhook data
-            if 'entry' in data and len(data['entry']) > 0:
-                entry = data['entry'][0]
-                if 'changes' in entry and len(entry['changes']) > 0:
-                    change = entry['changes'][0]
-                    if 'value' in change and 'messages' in change['value'] and len(change['value']['messages']) > 0:
-                        message = change['value']['messages'][0]
-                        sender_number = message['from']
+            if 'object' in data and 'entry' in data:
+                if data['object'] == 'whatsapp_business_account':
+                    for entry in data['entry']:
+                        sender_number = entry['changes'][0]['value']['metadata']['phone_number_id']
+                        message_text = entry['changes'][0]['value']['messages'][0]['text']['body']
                         
-                        if 'text' in message and 'body' in message['text']:
-                            message_text = message['text']['body']
-
-                            from .views import WhatsAppWebhook
-                            
-                            webhook_handler = WhatsAppWebhook()
-
-                            response = webhook_handler.process_message(message_text, sender_number)
-                            
+                        # Import and process the message
+                        from .views import WhatsAppWebhook
+                        webhook_handler = WhatsAppWebhook()
+                        response = webhook_handler.process_message(message_text, sender_number)
+                        
+                        # If you want to send a reply
+                        phone_number = '23798827753'  # Consider using the sender_number instead
+                        message = 'Re: ' + response  # Use the response from process_message
+                        
+                        # Add code to send the response back using WhatsApp API
+                        send_message(message, phone_number)
+                        
+            # Always return a 200 OK for webhook requests
             return HttpResponse('Success', status=200)
         except Exception as e:
             print(f"Error processing webhook: {str(e)}")
