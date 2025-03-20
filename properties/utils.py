@@ -65,9 +65,12 @@ def whatsapp_webhook(request):
                         
                         if 'text' in message and 'body' in message['text']:
                             message_text = message['text']['body']
+
+                            from .views import WhatsAppWebhook
                             
-                            # Here you would process the message or call your existing processing logic
-                            # Example: process_message(message_text, sender_number)
+                            webhook_handler = WhatsAppWebhook()
+
+                            response = webhook_handler.process_message(message_text, sender_number)
                             
             return HttpResponse('Success', status=200)
         except Exception as e:
