@@ -5,7 +5,7 @@ app_name = 'properties'
 
 urlpatterns = [  
     # Home view  
-    path('/', views.HomeView.as_view(), name='home'),  
+    path('', views.HomeView.as_view(), name='home'),  
     
     # Property management  
     path('properties/', views.PropertyListCreate.as_view(), name='property-list-create'),  
