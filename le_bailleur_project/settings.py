@@ -49,6 +49,8 @@ ALLOWED_HOSTS = [
     "Le-bailleur.onrender.com",
 ]
 
+PORT = os.getenv('PORT', '10000') 
+
 
 # Application definition
 
