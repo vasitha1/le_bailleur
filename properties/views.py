@@ -13,12 +13,12 @@ from .serializers import (
 )
 from .utils import (
     send_whatsapp_message, get_or_create_session, check_session_expiry,
-    landlord_main_menu, generate_receipt_number, format_menu, whatsapp_webhook,
+    landlord_main_menu, generate_receipt_number, format_menu,
 )
 import json
 import logging  
 from django.core.exceptions import ObjectDoesNotExist
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
 import sys
@@ -66,17 +66,21 @@ class PaymentReceiptListCreate(generics.ListCreateAPIView):
 class WhatsAppWebhook(APIView):
     """Handle WhatsApp webhook messages after verification."""
     
-        VERIFY_TOKEN = '7e5de035-f7ed-4737-b2bf-fc71b9cb1e63'  # Your verification token  
+    VERIFY_TOKEN = '7e5de035-f7ed-4737-b2bf-fc71b9cb1e63'  # Your verification token  
     
     def get(self, request, *args, **kwargs):  
-        print("Request received:", repr(request))
+        print("Request received:", repr(request)) #For debugging
+
+        with open("request_log.txt", "a") as f: #Creates a file for logging text
+            f.write(repr(request) + "\n")
+
         """Verify the webhook with GET request."""  
         mode = request.GET.get('hub.mode')  
         token = request.GET.get('hub.verify_token')  
         challenge = request.GET.get('hub.challenge')  
         
         if mode == 'subscribe' and token == self.VERIFY_TOKEN:  
-            return JsonResponse(challenge, status=200)  
+            return JsonResponse(challenge, safe=False, status=200)  
         else:  
             return JsonResponse({'error': 'token verification failed'}, status=403)  
 

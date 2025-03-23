@@ -1,0 +1,3 @@
+<rest_framework.request.Request: GET '/webhook/?hub.mode=subscribe&hub.verify_token=7e5de035-f7ed-4737-b2bf-fc71b9cb1e63&hub.challenge=123456'>
+<rest_framework.request.Request: GET '/webhook/?hub.mode=subscribe&hub.verify_token=7e5de035-f7ed-4737-b2bf-fc71b9cb1e63&hub.challenge=123456'>
+<rest_framework.request.Request: GET '/webhook/?hub.mode=subscribe&hub.verify_token=7e5de035-f7ed-4737-b2bf-fc71b9cb1e63&hub.challenge=123456'>
