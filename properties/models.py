@@ -79,3 +79,14 @@ class Session(models.Model):
     def is_expired(self):
         """Check if the session has been inactive for more than 10 minutes."""
         return (timezone.now() - self.last_activity) > timedelta(minutes=10)
+
+class WhatsAppMessage(models.Model):
+    message_id = models.CharField(max_length=100, unique=True)
+    sender_id = models.CharField(max_length=20)
+    message_type = models.CharField(max_length=20)
+    message_text = models.TextField(blank=True, null=True)
+    timestamp = models.CharField(max_length=20)
+    received_at = models.DateTimeField(auto_now_add=True)
+    
+    def __str__(self):
+        return f"Message {self.message_id} from {self.sender_id}"

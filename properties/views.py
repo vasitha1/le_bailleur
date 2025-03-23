@@ -6,7 +6,7 @@ from django.views.generic import TemplateView
 from django.utils import timezone
 from django.db import transaction
 from dateutil.relativedelta import relativedelta
-from .models import Property, Tenant, Landlord, RentEntity, Session, PaymentReceipt
+from .models import Property, Tenant, Landlord, RentEntity, Session, PaymentReceipt, WhatsAppMessage
 from .serializers import (
     PropertySerializer, TenantSerializer, LandlordSerializer, 
     RentEntitySerializer, PaymentReceiptSerializer
@@ -21,6 +21,7 @@ from django.core.exceptions import ObjectDoesNotExist
 from django.http import HttpResponse, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
+from django.conf import settings
 import sys
 
 class HomeView(TemplateView):
@@ -72,7 +73,7 @@ logging.basicConfig(
 class WhatsAppWebhook(APIView):
     """Handle WhatsApp webhook messages after verification."""
     
-    VERIFY_TOKEN = '7e5de035-f7ed-4737-b2bf-fc71b9cb1e63'  # Your verification token
+    VERIFY_TOKEN = settings.WHATSAPP_VERIFY_TOKEN
         
     def get(self, request, *args, **kwargs):
         """Verify the webhook with GET request."""
@@ -153,50 +154,19 @@ class WhatsAppWebhook(APIView):
             return Response({'status': 'error', 'message': str(e)}, status=status.HTTP_200_OK)
     
     def process_message(self, message_text, sender_number):
-        """Process incoming messages and prepare a response."""
-        logging.info(f"Processing message: {message_text} from sender {sender_number}")
-        
-        # Implement your message processing logic here
-        # You could add NLP, chatbot functionality, or business logic
-        
-        # Example: Echo the message back (for testing)
-        # You would replace this with your actual business logic
-        response_data = {
-            "messaging_product": "whatsapp",
-            "recipient_type": "individual",
-            "to": sender_number,
-            "type": "text",
-            "text": {
-                "body": f"You said: {message_text}"
-            }
-        }
-        
-        # NOTE: This doesn't actually send the message back
-        # You would need to make an API call to the WhatsApp API to send a response
-        # Example: self.send_whatsapp_response(response_data)
-        
-        return {"status": "Message processed successfully", "response_prepared": response_data}
-    
-    # def process_message(self, message_text, sender_number):
-    #     """Process incoming messages based on session state."""
-    #     # Get or create session
-    #     session = get_or_create_session(sender_number)
-        
-    #     # Check if session has expired (except for welcome state)
-    #     if session.current_state != 'welcome' and check_session_expiry(session):
-    #         # If session expired, reset to welcome state for new users
-    #         return {'status': 'session_expired'}
-        
-    #     # Process message based on current state
-    #     handler_method = getattr(self, f"handle_{session.current_state}", None)
-        
-    #     if handler_method and callable(handler_method):
-    #         return handler_method(message_text, sender_number, session)
-    #     else:
-    #         # Fallback to welcome if state handler not found
-    #         session.current_state = 'welcome'
-    #         session.save()
-    #         return self.handle_welcome(message_text, sender_number, session)
+        """Process incoming messages based on session state."""
+        session = get_or_create_session(sender_number)
+
+        if session.current_state != 'welcome' and check_session_expiry(session):
+            return {'status': 'session_expired'}
+
+        handler_method = getattr(self, f"handle_{session.current_state}", None)
+        if handler_method and callable(handler_method):
+            return handler_method(message_text, sender_number, session)
+
+        session.current_state = 'welcome'
+        session.save()
+        return self.handle_welcome(message_text, sender_number, session)
     
     def handle_welcome(self, message_text, sender_number, session):
         """Handle the welcome state - first contact with the app."""
