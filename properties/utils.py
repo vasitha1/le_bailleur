@@ -40,7 +40,7 @@ def subscribe_to_webhook():
     """Subscribe your app to the WhatsApp Business Account webhooks."""  
     url = f"https://graph.facebook.com/v12.0/{settings.WHATSAPP_BUSINESS_ACCOUNT_ID}/subscribed_apps"  
     headers = {  
-        'Authorization': f'Bearer {settings.ACCESS_TOKEN}',  # Ensure you set ACCESS_TOKEN in settings.py  
+        'Authorization': f'Bearer {settings.WHATSAPP_TOKEN}',  # Ensure you set ACCESS_TOKEN in settings.py  
         'Content-Type': 'application/json'  
     }  
     data = {  
