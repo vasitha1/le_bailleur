@@ -36,6 +36,26 @@ def send_whatsapp_message(phone_number, message):
         print(f"Exception occurred: {str(e)}")
         return None
 
+def subscribe_to_webhook():  
+    """Subscribe your app to the WhatsApp Business Account webhooks."""  
+    url = f"https://graph.facebook.com/v12.0/{settings.WHATSAPP_BUSINESS_ACCOUNT_ID}/subscribed_apps"  
+    headers = {  
+        'Authorization': f'Bearer {settings.ACCESS_TOKEN}',  # Ensure you set ACCESS_TOKEN in settings.py  
+        'Content-Type': 'application/json'  
+    }  
+    data = {  
+        "app_id": settings.WHATSAPP_APP_ID  # Set YOUR_APP_ID in settings.py  
+    }  
+    
+    response = requests.post(url, headers=headers, json=data)  
+    
+    if response.status_code == 200:  
+        print("Successfully subscribed to webhook.")  
+    else:  
+        print(f"Error subscribing to webhook: {response.status_code}, {response.text}")  
+
+
+
 @csrf_exempt
 def whatsapp_webhook(request):
     """Handle WhatsApp webhook verification and incoming messages."""
