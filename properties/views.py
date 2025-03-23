@@ -21,7 +21,7 @@ from django.core.exceptions import ObjectDoesNotExist
 from django.http import HttpResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
-
+import sys
 
 class HomeView(TemplateView):
     template_name = 'le_bailleur_templates/index.html'
@@ -69,6 +69,7 @@ class WhatsAppWebhook(APIView):
         VERIFY_TOKEN = '7e5de035-f7ed-4737-b2bf-fc71b9cb1e63'  # Your verification token  
     
     def get(self, request, *args, **kwargs):  
+        print("Request received:", repr(request))
         """Verify the webhook with GET request."""  
         mode = request.GET.get('hub.mode')  
         token = request.GET.get('hub.verify_token')  
