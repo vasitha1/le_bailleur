@@ -64,9 +64,10 @@ class PaymentReceiptListCreate(generics.ListCreateAPIView):
 
 
 logging.basicConfig(filename="incoming_messages.log", level=logging.INFO)
+
 class WhatsAppWebhook(APIView):
     """Handle WhatsApp webhook messages after verification."""
-    
+
     VERIFY_TOKEN = '7e5de035-f7ed-4737-b2bf-fc71b9cb1e63'  # Your verification token  
     
     def get(self, request, *args, **kwargs):  
@@ -85,7 +86,7 @@ class WhatsAppWebhook(APIView):
         else:  
             return JsonResponse({'error': 'token verification failed'}, status=403)  
 
-class WhatsAppWebhook(APIView):
+
     def post(self, request, *args, **kwargs):
         """Handle incoming WhatsApp webhook messages."""
         try:
