@@ -63,72 +63,119 @@ class PaymentReceiptListCreate(generics.ListCreateAPIView):
     serializer_class = PaymentReceiptSerializer
 
 
-logging.basicConfig(filename="incoming_messages.log", level=logging.INFO)
+logging.basicConfig(
+    filename="whatsapp_webhook.log",
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
 
 class WhatsAppWebhook(APIView):
     """Handle WhatsApp webhook messages after verification."""
-
-    VERIFY_TOKEN = '7e5de035-f7ed-4737-b2bf-fc71b9cb1e63'  # Your verification token  
     
-    def get(self, request, *args, **kwargs):  
-        print("Request received:", repr(request)) #For debugging
-
-        with open("request_log.txt", "a") as f: #Creates a file for logging text
-            f.write(repr(request) + "\n")
-
-        """Verify the webhook with GET request."""  
-        mode = request.GET.get('hub.mode')  
-        token = request.GET.get('hub.verify_token')  
-        challenge = request.GET.get('hub.challenge')  
+    VERIFY_TOKEN = '7e5de035-f7ed-4737-b2bf-fc71b9cb1e63'  # Your verification token
         
-        if mode == 'subscribe' and token == self.VERIFY_TOKEN:  
-            return JsonResponse(challenge, safe=False, status=200)  
-        else:  
-            return JsonResponse({'error': 'token verification failed'}, status=403)  
-
-
+    def get(self, request, *args, **kwargs):
+        """Verify the webhook with GET request."""
+        logging.info("Received GET request for webhook verification")
+        
+        # Log request details for debugging
+        logging.debug("Request received: %s", repr(request))
+        with open("request_log.txt", "a") as f:
+            f.write(repr(request) + "\n")
+        
+        # Extract verification parameters
+        mode = request.GET.get('hub.mode')
+        token = request.GET.get('hub.verify_token')
+        challenge = request.GET.get('hub.challenge')
+        
+        logging.info(f"Verification attempt - Mode: {mode}, Token: {token[:4]}..., Challenge: {challenge}")
+        
+        if mode == 'subscribe' and token == self.VERIFY_TOKEN:
+            logging.info("Webhook verification successful")
+            return HttpResponse(challenge, status=200)
+        else:
+            logging.warning("Webhook verification failed")
+            return JsonResponse({'error': 'token verification failed'}, status=403)
+    
     def post(self, request, *args, **kwargs):
         """Handle incoming WhatsApp webhook messages."""
         try:
-            payload = json.loads(request.body)  # Get the incoming JSON data
-            logging.info(f"Received payload: {payload}")  # Log the received payload for tracking
-
-            if 'entry' in payload and payload['entry']:
-                for entry in payload['entry']:
-                    if 'changes' in entry:
-                        for change in entry['changes']:
-                            if 'value' in change and 'messages' in change['value']:
-                                messages = change['value']['messages']
-                                if messages and len(messages) > 0:
-                                    # Track each incoming message
-                                    for incoming_message in messages:
-                                        sender_number = incoming_message['from']
-                                        logging.info(f"Received message from {sender_number}")
-
-                                        if 'text' in incoming_message and 'body' in incoming_message['text']:
-                                            message_text = incoming_message['text']['body']
-                                            logging.info(f"Message content: {message_text}")
-
-                                            # Process the message using your existing logic
-                                            response = self.process_message(message_text, sender_number)
-                                            
-                                            # Optionally, save message to a file (for example, in JSON format)
-                                            with open("message_log.json", "a") as log_file:
-                                                log_file.write(json.dumps(incoming_message) + "\n")
-
-                                            return Response(response, status=status.HTTP_200_OK)
-
-            return Response({'status': 'No messages found'}, status=status.HTTP_200_OK)
-        
+            # Parse incoming JSON payload
+            payload = json.loads(request.body)
+            logging.info("Received webhook POST payload")
+            logging.debug(f"Payload content: {payload}")
+            
+            # Check for the correct WhatsApp message structure
+            # WhatsApp messages come in a specific format according to the API
+            if 'object' in payload and payload['object'] == 'whatsapp_business_account':
+                for entry in payload.get('entry', []):
+                    for change in entry.get('changes', []):
+                        if change.get('field') == 'messages':
+                            value = change.get('value', {})
+                            messages = value.get('messages', [])
+                            
+                            if not messages:
+                                logging.info("No messages found in payload")
+                                continue
+                                
+                            for message in messages:
+                                message_type = message.get('type')
+                                sender_id = message.get('from')
+                                
+                                logging.info(f"Processing message from: {sender_id}, type: {message_type}")
+                                
+                                if message_type == 'text':
+                                    message_text = message.get('text', {}).get('body', '')
+                                    logging.info(f"Message content: {message_text}")
+                                    
+                                    # Process the message
+                                    response = self.process_message(message_text, sender_id)
+                                    
+                                    # Log the complete message for debugging
+                                    with open("message_log.json", "a") as log_file:
+                                        log_file.write(json.dumps(message) + "\n")
+                                elif message_type in ['image', 'audio', 'video', 'document']:
+                                    # Handle media messages if needed
+                                    logging.info(f"Received {message_type} message from {sender_id}")
+                                    # You can implement media handling here
+                                else:
+                                    logging.info(f"Received unsupported message type: {message_type}")
+                
+                # Always return 200 OK for webhook deliveries
+                return Response({'status': 'success'}, status=status.HTTP_200_OK)
+            
+            logging.warning("Invalid payload structure")
+            return Response({'status': 'Invalid payload structure'}, status=status.HTTP_200_OK)
+            
         except Exception as e:
-            logging.error(f"Error processing webhook: {str(e)}")  # Log the error
-            return Response({'status': 'error', 'message': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
+            logging.error(f"Error processing webhook: {str(e)}", exc_info=True)
+            # Still return 200 OK to acknowledge receipt (WhatsApp expects this)
+            return Response({'status': 'error', 'message': str(e)}, status=status.HTTP_200_OK)
+    
     def process_message(self, message_text, sender_number):
-        """Process incoming messages based on session state."""
-        # Get or create session logic here (if needed)
+        """Process incoming messages and prepare a response."""
         logging.info(f"Processing message: {message_text} from sender {sender_number}")
-        return {"status": "Message processed successfully"}
+        
+        # Implement your message processing logic here
+        # You could add NLP, chatbot functionality, or business logic
+        
+        # Example: Echo the message back (for testing)
+        # You would replace this with your actual business logic
+        response_data = {
+            "messaging_product": "whatsapp",
+            "recipient_type": "individual",
+            "to": sender_number,
+            "type": "text",
+            "text": {
+                "body": f"You said: {message_text}"
+            }
+        }
+        
+        # NOTE: This doesn't actually send the message back
+        # You would need to make an API call to the WhatsApp API to send a response
+        # Example: self.send_whatsapp_response(response_data)
+        
+        return {"status": "Message processed successfully", "response_prepared": response_data}
     
     # def process_message(self, message_text, sender_number):
     #     """Process incoming messages based on session state."""

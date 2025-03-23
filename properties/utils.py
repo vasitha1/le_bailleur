@@ -21,7 +21,7 @@ def send_whatsapp_message(phone_number, message):
     }
     
     try:
-        response = requests.post(settings.WHATSAPP_URL, headers=headers, json=payload)
+        response = requests.post(settings.WHATSAPP_URLrstrip('/') + "/messages", headers=headers, json=payload)
         print(f"Response Status Code: {response.status_code}")  # for debugging
         print(f"Response Content: {response.text}")  # For debugging
         
