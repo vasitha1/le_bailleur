@@ -55,53 +55,6 @@ def subscribe_to_webhook():
         print(f"Error subscribing to webhook: {response.status_code}, {response.text}")  
 
 
-
-@csrf_exempt
-def whatsapp_webhook(request):
-    """Handle WhatsApp webhook verification and incoming messages."""
-    VERIFY_TOKEN = '7e5de035-f7ed-4737-b2bf-fc71b9cb1e63'
-    
-    if request.method == 'GET':
-        mode = request.GET.get('hub.mode')
-        token = request.GET.get('hub.verify_token')
-        challenge = request.GET.get('hub.challenge')
-        
-        if mode == 'subscribe' and token == VERIFY_TOKEN:
-            return HttpResponse(challenge, status=200)
-        else:
-            return HttpResponse('Error: token verification failed', status=403)
-    
-    elif request.method == 'POST':
-        try:
-            data = json.loads(request.body)
-            # Process the incoming webhook data
-            if 'object' in data and 'entry' in data:
-                if data['object'] == 'whatsapp_business_account':
-                    for entry in data['entry']:
-                        sender_number = entry['changes'][0]['value']['metadata']['phone_number_id']
-                        message_text = entry['changes'][0]['value']['messages'][0]['text']['body']
-                        
-                        # Import and process the message
-                        from .views import WhatsAppWebhook
-                        webhook_handler = WhatsAppWebhook()
-                        response = webhook_handler.process_message(message_text, sender_number)
-                        
-                        # If you want to send a reply
-                        phone_number = '23798827753'  # Consider using the sender_number instead
-                        message = 'Re: Thank you Felsi!' # Use the response from process_message
-                        
-                        # Add code to send the response back using WhatsApp API
-                        send_message(message, phone_number)
-                        
-            # Always return a 200 OK for webhook requests
-            return HttpResponse('Success', status=200)
-        except Exception as e:
-            print(f"Error processing webhook: {str(e)}")
-            return HttpResponse(f"Error: {str(e)}", status=500)
-    
-    return HttpResponse('Method not allowed', status=405)
-
-
 def get_or_create_session(whatsapp_number):
     """Get or create a session for the given WhatsApp number."""
     from .models import Session  # Import here to avoid circular imports

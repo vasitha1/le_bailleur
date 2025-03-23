@@ -23,9 +23,6 @@ urlpatterns = [
     path('landlords/create/', views.CreateLandlord.as_view(), name='create_landlord'),  
     path('landlords/', views.LandlordList.as_view(), name='list_landlords'),   
 
-     # For webhook verification and basic message processing
-    path('webhook/', utils.whatsapp_webhook, name='whatsapp_webhook'),
-    
     # For your full class-based implementation
-    path('api/webhook/', views.WhatsAppWebhook.as_view(), name='whatsapp_api_webhook'),
+    path('webhook/', views.WhatsAppWebhook.as_view(), name='whatsapp_webhook'),
 ]    

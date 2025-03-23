@@ -63,58 +63,49 @@ class PaymentReceiptListCreate(generics.ListCreateAPIView):
     serializer_class = PaymentReceiptSerializer
 
 
-@method_decorator(csrf_exempt, name='dispatch')
 class WhatsAppWebhook(APIView):
     """Handle WhatsApp webhook messages after verification."""
     
-    def post(self, request, *args, **kwargs):
-        """Handle incoming WhatsApp webhook messages."""
-        try:
-            # For raw request body
-            if not request.data and request.body:
-                payload = json.loads(request.body)
-            else:
-                payload = request.data
-            
-            # Extract the message details from WhatsApp format
-            message_text = ""
-            sender_number = ""
-            
-            # Parse the incoming webhook payload
-            if 'entry' in payload and payload['entry']:
-                for entry in payload['entry']:
-                    if 'changes' in entry:
-                        for change in entry['changes']:
-                            if 'value' in change and 'messages' in change['value']:
-                                messages = change['value']['messages']
-                                if messages and len(messages) > 0:
-                                    incoming_message = messages[0]
-                                    sender_number = incoming_message['from']
-                                    
-                                    if 'text' in incoming_message and 'body' in incoming_message['text']:
-                                        message_text = incoming_message['text']['body']
-                                        
-                                        # Process the message using your existing logic
-                                        response = self.process_message(message_text, sender_number)
-                                        return Response(response, status=status.HTTP_200_OK)
-            
-            # Fallback for direct format
-            if 'messages' in payload and payload['messages']:
-                incoming_message = payload['messages'][0]
-                sender_number = incoming_message['from']
-                
-                if 'text' in incoming_message and 'body' in incoming_message['text']:
-                    message_text = incoming_message['text']['body']
-                    
-                    # Process the message
-                    response = self.process_message(message_text, sender_number)
-                    return Response(response, status=status.HTTP_200_OK)
-            
-            return Response({'status': 'No messages found'}, status=status.HTTP_200_OK)
+        VERIFY_TOKEN = '7e5de035-f7ed-4737-b2bf-fc71b9cb1e63'  # Your verification token  
+    
+    def get(self, request, *args, **kwargs):  
+        """Verify the webhook with GET request."""  
+        mode = request.GET.get('hub.mode')  
+        token = request.GET.get('hub.verify_token')  
+        challenge = request.GET.get('hub.challenge')  
         
-        except Exception as e:
-            print(f"Error processing webhook: {str(e)}")
-            return Response({'status': 'error', 'message': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        if mode == 'subscribe' and token == self.VERIFY_TOKEN:  
+            return JsonResponse(challenge, status=200)  
+        else:  
+            return JsonResponse({'error': 'token verification failed'}, status=403)  
+
+    def post(self, request, *args, **kwargs):  
+        """Handle incoming WhatsApp webhook messages."""  
+        try:  
+            payload = json.loads(request.body)  # Get the incoming JSON data  
+            
+            if 'entry' in payload and payload['entry']:  
+                for entry in payload['entry']:  
+                    if 'changes' in entry:  
+                        for change in entry['changes']:  
+                            if 'value' in change and 'messages' in change['value']:  
+                                messages = change['value']['messages']  
+                                if messages and len(messages) > 0:  
+                                    incoming_message = messages[0]  
+                                    sender_number = incoming_message['from']  
+                                    
+                                    if 'text' in incoming_message and 'body' in incoming_message['text']:  
+                                        message_text = incoming_message['text']['body']  
+                                        
+                                        # Process the message using your existing logic  
+                                        response = self.process_message(message_text, sender_number)  
+                                        return Response(response, status=status.HTTP_200_OK)  
+
+            return Response({'status': 'No messages found'}, status=status.HTTP_200_OK)  
+        
+        except Exception as e:  
+            print(f"Error processing webhook: {str(e)}")  
+            return Response({'status': 'error', 'message': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)  
     
     def process_message(self, message_text, sender_number):
         """Process incoming messages based on session state."""
