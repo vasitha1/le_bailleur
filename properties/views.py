@@ -63,6 +63,7 @@ class PaymentReceiptListCreate(generics.ListCreateAPIView):
     serializer_class = PaymentReceiptSerializer
 
 
+logging.basicConfig(filename="incoming_messages.log", level=logging.INFO)
 class WhatsAppWebhook(APIView):
     """Handle WhatsApp webhook messages after verification."""
     
@@ -84,54 +85,70 @@ class WhatsAppWebhook(APIView):
         else:  
             return JsonResponse({'error': 'token verification failed'}, status=403)  
 
-    def post(self, request, *args, **kwargs):  
-        """Handle incoming WhatsApp webhook messages."""  
-        try:  
-            payload = json.loads(request.body)  # Get the incoming JSON data  
-            
-            if 'entry' in payload and payload['entry']:  
-                for entry in payload['entry']:  
-                    if 'changes' in entry:  
-                        for change in entry['changes']:  
-                            if 'value' in change and 'messages' in change['value']:  
-                                messages = change['value']['messages']  
-                                if messages and len(messages) > 0:  
-                                    incoming_message = messages[0]  
-                                    sender_number = incoming_message['from']  
-                                    
-                                    if 'text' in incoming_message and 'body' in incoming_message['text']:  
-                                        message_text = incoming_message['text']['body']  
-                                        
-                                        # Process the message using your existing logic  
-                                        response = self.process_message(message_text, sender_number)  
-                                        return Response(response, status=status.HTTP_200_OK)  
+    class WhatsAppWebhook(APIView):
+    def post(self, request, *args, **kwargs):
+        """Handle incoming WhatsApp webhook messages."""
+        try:
+            payload = json.loads(request.body)  # Get the incoming JSON data
+            logging.info(f"Received payload: {payload}")  # Log the received payload for tracking
 
-            return Response({'status': 'No messages found'}, status=status.HTTP_200_OK)  
+            if 'entry' in payload and payload['entry']:
+                for entry in payload['entry']:
+                    if 'changes' in entry:
+                        for change in entry['changes']:
+                            if 'value' in change and 'messages' in change['value']:
+                                messages = change['value']['messages']
+                                if messages and len(messages) > 0:
+                                    # Track each incoming message
+                                    for incoming_message in messages:
+                                        sender_number = incoming_message['from']
+                                        logging.info(f"Received message from {sender_number}")
+
+                                        if 'text' in incoming_message and 'body' in incoming_message['text']:
+                                            message_text = incoming_message['text']['body']
+                                            logging.info(f"Message content: {message_text}")
+
+                                            # Process the message using your existing logic
+                                            response = self.process_message(message_text, sender_number)
+                                            
+                                            # Optionally, save message to a file (for example, in JSON format)
+                                            with open("message_log.json", "a") as log_file:
+                                                log_file.write(json.dumps(incoming_message) + "\n")
+
+                                            return Response(response, status=status.HTTP_200_OK)
+
+            return Response({'status': 'No messages found'}, status=status.HTTP_200_OK)
         
-        except Exception as e:  
-            print(f"Error processing webhook: {str(e)}")  
-            return Response({'status': 'error', 'message': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)  
-    
+        except Exception as e:
+            logging.error(f"Error processing webhook: {str(e)}")  # Log the error
+            return Response({'status': 'error', 'message': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
     def process_message(self, message_text, sender_number):
         """Process incoming messages based on session state."""
-        # Get or create session
-        session = get_or_create_session(sender_number)
+        # Get or create session logic here (if needed)
+        logging.info(f"Processing message: {message_text} from sender {sender_number}")
+        return {"status": "Message processed successfully"}
+    
+    # def process_message(self, message_text, sender_number):
+    #     """Process incoming messages based on session state."""
+    #     # Get or create session
+    #     session = get_or_create_session(sender_number)
         
-        # Check if session has expired (except for welcome state)
-        if session.current_state != 'welcome' and check_session_expiry(session):
-            # If session expired, reset to welcome state for new users
-            return {'status': 'session_expired'}
+    #     # Check if session has expired (except for welcome state)
+    #     if session.current_state != 'welcome' and check_session_expiry(session):
+    #         # If session expired, reset to welcome state for new users
+    #         return {'status': 'session_expired'}
         
-        # Process message based on current state
-        handler_method = getattr(self, f"handle_{session.current_state}", None)
+    #     # Process message based on current state
+    #     handler_method = getattr(self, f"handle_{session.current_state}", None)
         
-        if handler_method and callable(handler_method):
-            return handler_method(message_text, sender_number, session)
-        else:
-            # Fallback to welcome if state handler not found
-            session.current_state = 'welcome'
-            session.save()
-            return self.handle_welcome(message_text, sender_number, session)
+    #     if handler_method and callable(handler_method):
+    #         return handler_method(message_text, sender_number, session)
+    #     else:
+    #         # Fallback to welcome if state handler not found
+    #         session.current_state = 'welcome'
+    #         session.save()
+    #         return self.handle_welcome(message_text, sender_number, session)
     
     def handle_welcome(self, message_text, sender_number, session):
         """Handle the welcome state - first contact with the app."""
