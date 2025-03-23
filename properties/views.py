@@ -85,49 +85,49 @@ class WhatsAppWebhook(APIView):
         else:  
             return JsonResponse({'error': 'token verification failed'}, status=403)  
 
-    class WhatsAppWebhook(APIView):
-        def post(self, request, *args, **kwargs):
-            """Handle incoming WhatsApp webhook messages."""
-            try:
-                payload = json.loads(request.body)  # Get the incoming JSON data
-                logging.info(f"Received payload: {payload}")  # Log the received payload for tracking
+class WhatsAppWebhook(APIView):
+    def post(self, request, *args, **kwargs):
+        """Handle incoming WhatsApp webhook messages."""
+        try:
+            payload = json.loads(request.body)  # Get the incoming JSON data
+            logging.info(f"Received payload: {payload}")  # Log the received payload for tracking
 
-                if 'entry' in payload and payload['entry']:
-                    for entry in payload['entry']:
-                        if 'changes' in entry:
-                            for change in entry['changes']:
-                                if 'value' in change and 'messages' in change['value']:
-                                    messages = change['value']['messages']
-                                    if messages and len(messages) > 0:
-                                        # Track each incoming message
-                                        for incoming_message in messages:
-                                            sender_number = incoming_message['from']
-                                            logging.info(f"Received message from {sender_number}")
+            if 'entry' in payload and payload['entry']:
+                for entry in payload['entry']:
+                    if 'changes' in entry:
+                        for change in entry['changes']:
+                            if 'value' in change and 'messages' in change['value']:
+                                messages = change['value']['messages']
+                                if messages and len(messages) > 0:
+                                    # Track each incoming message
+                                    for incoming_message in messages:
+                                        sender_number = incoming_message['from']
+                                        logging.info(f"Received message from {sender_number}")
 
-                                            if 'text' in incoming_message and 'body' in incoming_message['text']:
-                                                message_text = incoming_message['text']['body']
-                                                logging.info(f"Message content: {message_text}")
+                                        if 'text' in incoming_message and 'body' in incoming_message['text']:
+                                            message_text = incoming_message['text']['body']
+                                            logging.info(f"Message content: {message_text}")
 
-                                                # Process the message using your existing logic
-                                                response = self.process_message(message_text, sender_number)
-                                                
-                                                # Optionally, save message to a file (for example, in JSON format)
-                                                with open("message_log.json", "a") as log_file:
-                                                    log_file.write(json.dumps(incoming_message) + "\n")
+                                            # Process the message using your existing logic
+                                            response = self.process_message(message_text, sender_number)
+                                            
+                                            # Optionally, save message to a file (for example, in JSON format)
+                                            with open("message_log.json", "a") as log_file:
+                                                log_file.write(json.dumps(incoming_message) + "\n")
 
-                                                return Response(response, status=status.HTTP_200_OK)
+                                            return Response(response, status=status.HTTP_200_OK)
 
-                return Response({'status': 'No messages found'}, status=status.HTTP_200_OK)
-            
-            except Exception as e:
-                logging.error(f"Error processing webhook: {str(e)}")  # Log the error
-                return Response({'status': 'error', 'message': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response({'status': 'No messages found'}, status=status.HTTP_200_OK)
+        
+        except Exception as e:
+            logging.error(f"Error processing webhook: {str(e)}")  # Log the error
+            return Response({'status': 'error', 'message': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-        def process_message(self, message_text, sender_number):
-            """Process incoming messages based on session state."""
-            # Get or create session logic here (if needed)
-            logging.info(f"Processing message: {message_text} from sender {sender_number}")
-            return {"status": "Message processed successfully"}
+    def process_message(self, message_text, sender_number):
+        """Process incoming messages based on session state."""
+        # Get or create session logic here (if needed)
+        logging.info(f"Processing message: {message_text} from sender {sender_number}")
+        return {"status": "Message processed successfully"}
     
     # def process_message(self, message_text, sender_number):
     #     """Process incoming messages based on session state."""
