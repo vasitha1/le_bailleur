@@ -98,64 +98,65 @@ class WhatsAppWebhook(APIView):
             logging.warning("Webhook verification failed")
             return JsonResponse({'error': 'token verification failed'}, status=403)
     
-    def post(self, request, *args, **kwargs):
-        """Handle incoming WhatsApp webhook messages."""
-        print("======== WEBHOOK POST REQUEST RECEIVED ========")
-        try:
+    def post(self, request, *args, **kwargs):  
+        """Handle incoming WhatsApp webhook messages."""  
+        print("======== WEBHOOK POST REQUEST RECEIVED ========")  
+        try:  
+            print(f"Raw request body: {request.body.decode('utf-8')}")  
+            # Parse incoming JSON payload  
+            payload = json.loads(request.body)  
 
-            print(f"Raw request body: {request.body.decode('utf-8')}")
-            # Parse incoming JSON payload
-            payload = json.loads(request.body)
+            logging.info("Received webhook POST payload")  # Debugging  
+            logging.debug(f"Payload content: {payload}")  
+            print(f"Parsed payload: {json.dumps(payload, indent=2)}")  # Debugging  
 
+            if 'object' in payload and payload['object'] == 'whatsapp_business_account':  
+                for entry in payload.get('entry', []):  
+                    for change in entry.get('changes', []):  
+                        if change.get('field') == 'messages':  
+                            value = change.get('value', {})  
+                            messages = value.get('messages', [])  
 
-            logging.info("Received webhook POST payload") #debugging
-            logging.debug(f"Payload content: {payload}")
-            print(f"Parsed payload: {json.dumps(payload, indent=2)}") #debugging
-            # Check for the correct WhatsApp message structure
-            # WhatsApp messages come in a specific format according to the API
-            if 'object' in payload and payload['object'] == 'whatsapp_business_account':
-                for entry in payload.get('entry', []):
-                    for change in entry.get('changes', []):
-                        if change.get('field') == 'messages':
-                            value = change.get('value', {})
-                            messages = value.get('messages', [])
-                            
-                            if not messages:
-                                logging.info("No messages found in payload")
-                                continue
-                                
-                            for message in messages:
-                                message_type = message.get('type')
-                                sender_id = message.get('from')
-                                
-                                logging.info(f"Processing message from: {sender_id}, type: {message_type}")
-                                
-                                if message_type == 'text':
-                                    message_text = message.get('text', {}).get('body', '')
-                                    logging.info(f"Message content: {message_text}")
-                                    
-                                    # Process the message
-                                    response = self.process_message(message_text, sender_id)
-                                    
-                                    # Log the complete message for debugging
-                                    with open("message_log.json", "a") as log_file:
-                                        log_file.write(json.dumps(message) + "\n")
-                                elif message_type in ['image', 'audio', 'video', 'document']:
-                                    # Handle media messages if needed
-                                    logging.info(f"Received {message_type} message from {sender_id}")
-                                    # You can implement media handling here
-                                else:
-                                    logging.info(f"Received unsupported message type: {message_type}")
-                
-                # Always return 200 OK for webhook deliveries
-                return Response({'status': 'success'}, status=status.HTTP_200_OK)
-            
-            logging.warning("Invalid payload structure")
-            return Response({'status': 'Invalid payload structure'}, status=status.HTTP_200_OK)
-            
-        except Exception as e:
-            logging.error(f"Error processing webhook: {str(e)}", exc_info=True)
-            # Still return 200 OK to acknowledge receipt (WhatsApp expects this)
+                            if not messages:  
+                                logging.info("No messages found in payload")  
+                                continue  
+
+                            for message in messages:  
+                                message_type = message.get('type')  
+                                sender_id = message.get('from')  
+
+                                # Remove the '+' sign from the sender_id  
+                                if sender_id.startswith('+'):  
+                                    sender_id = sender_id[1:]  # Remove the first character ('+')  
+
+                                logging.info(f"Processing message from: {sender_id}, type: {message_type}")  
+
+                                if message_type == 'text':  
+                                    message_text = message.get('text', {}).get('body', '')  
+                                    logging.info(f"Message content: {message_text}")  
+
+                                    # Process the message  
+                                    response = self.process_message(message_text, sender_id)  
+
+                                    # Log the complete message for debugging  
+                                    with open("message_log.json", "a") as log_file:  
+                                        log_file.write(json.dumps(message) + "\n")  
+                                elif message_type in ['image', 'audio', 'video', 'document']:  
+                                    # Handle media messages if needed  
+                                    logging.info(f"Received {message_type} message from {sender_id}")  
+                                    # You can implement media handling here  
+                                else:  
+                                    logging.info(f"Received unsupported message type: {message_type}")  
+
+                # Always return 200 OK for webhook deliveries  
+                return Response({'status': 'success'}, status=status.HTTP_200_OK)  
+
+            logging.warning("Invalid payload structure")  
+            return Response({'status': 'Invalid payload structure'}, status=status.HTTP_200_OK)  
+
+        except Exception as e:  
+            logging.error(f"Error processing webhook: {str(e)}", exc_info=True)  
+            # Still return 200 OK to acknowledge receipt (WhatsApp expects this)  
             return Response({'status': 'error', 'message': str(e)}, status=status.HTTP_200_OK)
     
     def process_message(self, message_text, sender_number):
