@@ -129,6 +129,8 @@ class WhatsAppWebhook(APIView):
                                 if sender_id.startswith('+'):  
                                     sender_id = sender_id[1:]  # Remove the first character ('+')  
 
+                                print(sender_id) #for debugging
+
                                 logging.info(f"Processing message from: {sender_id}, type: {message_type}")  
 
                                 if message_type == 'text':  
