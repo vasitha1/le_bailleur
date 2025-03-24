@@ -56,47 +56,49 @@ def subscribe_to_webhook():
 
 
 def get_or_create_session(whatsapp_number):
-    """Get or create a session for the given WhatsApp number."""
+    """
+    Get or create a session for the given WhatsApp number.
+    Always reset or update the session to ensure it's current.
+    """
     from .models import Session  # Import here to avoid circular imports
-    
+
     try:
         session = Session.objects.get(whatsapp_number=whatsapp_number)
-        # Update last activity
-        session.last_activity = timezone.now()
-        session.save()
     except Session.DoesNotExist:
-        # Create new session
+        # Create new session if it doesn't exist
         session = Session.objects.create(
             whatsapp_number=whatsapp_number,
             current_state='welcome',
         )
     
+    # Always update the last activity
+    session.last_activity = timezone.now()
+    session.save()
+    
     return session
 
+
 def check_session_expiry(session):
-    """Check if session has expired and reset if needed."""
-    if session.is_expired():
-        # Send message about session expiry
+    """
+    Check if session has expired due to inactivity.
+    Returns True if session has expired, False otherwise.
+    """
+    # Define inactivity timeout (10 minutes)
+    INACTIVITY_TIMEOUT = timezone.timedelta(minutes=10)
+    
+    # Check if session is expired
+    if timezone.now() - session.last_activity > INACTIVITY_TIMEOUT:
+        # Send expiry message
         send_whatsapp_message(
-            session.whatsapp_number, 
-            "Your session has expired due to 10 minutes of inactivity. You have been logged out."
+            session.whatsapp_number,
+            "Your session has expired due to 10 minutes of inactivity. Restarting session."
         )
         
-        # Reset or update session as needed
-        if session.is_landlord:
-            # For registered users, just update the state
-            session.current_state = 'logged_out'
-            session.save()
-            return True
-        else:
-            # For unregistered users, reset the session
-            session.current_state = 'welcome'
-            session.context_data = {}
-            session.save()
-            return True
+        return True
     
     return False
 
+    
 def generate_receipt_number():
     """Generate a unique receipt number."""
     return f"RCP-{uuid.uuid4().hex[:8].upper()}"
