@@ -168,25 +168,25 @@ class WhatsAppWebhook(APIView):
             return Response({'status': 'error', 'message': str(e)}, status=status.HTTP_200_OK)
     
     def process_message(self, message_text, sender_number):
-    """
-    Process incoming messages with robust session management.
-    Handles session expiry and continuous conversation flow.
-    """
-    # Get or create session
-    session = get_or_create_session(sender_number)
+        """
+        Process incoming messages with robust session management.
+        Handles session expiry and continuous conversation flow.
+        """
+        # Get or create session
+        session = get_or_create_session(sender_number)
 
-    # Check session expiry
-    if session.current_state != 'welcome':
-        if check_session_expiry(session):
-            # If expired, reset to welcome state to re-identify the user
-            return self.handle_welcome(message_text, sender_number, session)
+        # Check session expiry
+        if session.current_state != 'welcome':
+            if check_session_expiry(session):
+                # If expired, reset to welcome state to re-identify the user
+                return self.handle_welcome(message_text, sender_number, session)
 
-    # Determine the handler based on the current session state
-    # This ensures that messages are treated as part of the ongoing conversation
-    handler_method = getattr(self, f"handle_{session.current_state}", self.handle_welcome)
-    
-    # Call the handler method with the current message and session context
-    return handler_method(message_text, sender_number, session)
+        # Determine the handler based on the current session state
+        # This ensures that messages are treated as part of the ongoing conversation
+        handler_method = getattr(self, f"handle_{session.current_state}", self.handle_welcome)
+        
+        # Call the handler method with the current message and session context
+        return handler_method(message_text, sender_number, session)
     
     def handle_welcome(self, message_text, sender_number, session):
         """Handle the welcome state - first contact with the app."""
