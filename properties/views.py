@@ -100,12 +100,17 @@ class WhatsAppWebhook(APIView):
     
     def post(self, request, *args, **kwargs):
         """Handle incoming WhatsApp webhook messages."""
+        print("======== WEBHOOK POST REQUEST RECEIVED ========")
         try:
+
+            print(f"Raw request body: {request.body.decode('utf-8')}")
             # Parse incoming JSON payload
             payload = json.loads(request.body)
-            logging.info("Received webhook POST payload")
+
+
+            logging.info("Received webhook POST payload") #debugging
             logging.debug(f"Payload content: {payload}")
-            
+            print(f"Parsed payload: {json.dumps(payload, indent=2)}") #debugging
             # Check for the correct WhatsApp message structure
             # WhatsApp messages come in a specific format according to the API
             if 'object' in payload and payload['object'] == 'whatsapp_business_account':

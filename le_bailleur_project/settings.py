@@ -174,3 +174,28 @@ WHATSAPP_BUSINESS_ACCOUNT_ID = '678297307994040'
 WHATSAPP_APP_ID = '1420304509347021'
 WHATSAPP_SECRET_KEY = os.getenv('WHATSAPP_SECRET_KEY', '7e5de035-f7ed-4737-b2bf-fc71b9cb1e63')
 WHATSAPP_VERIFY_TOKEN = '7e5de035-f7ed-4737-b2bf-fc71b9cb1e63'
+
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '{levelname} {asctime} {module} {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'console': {
+            'level': 'DEBUG',
+            'class': 'logging.StreamHandler',
+            'formatter': 'verbose',
+        },
+    },
+    'loggers': {
+        '': {  # Root logger
+            'handlers': ['console'],
+            'level': 'DEBUG',
+        },
+    },
+}
