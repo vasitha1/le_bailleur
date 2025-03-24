@@ -127,7 +127,13 @@ class WhatsAppWebhook(APIView):
 
                                 # Remove the '+' sign from the sender_id  
                                 if sender_id.startswith('+'):  
-                                    sender_id = sender_id[1:]  # Remove the first character ('+')  
+                                    sender_id = sender_id[1:]  # Remove the first character ('+') 
+
+                                 # Check if the number starts with the country code '237'
+                                 if phone_number.startswith('237'):
+                                    # If it doesn't already have a '6' after '237', add '6'
+                                    if phone_number[3] != '6': 
+                                        phone_number = phone_number[:3] + '6' + phone_number[3:] 
 
                                 print(sender_id) #for debugging
 
