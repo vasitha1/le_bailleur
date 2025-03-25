@@ -167,77 +167,83 @@ class WhatsAppWebhook(APIView):
             # Still return 200 OK to acknowledge receipt (WhatsApp expects this)  
             return Response({'status': 'error', 'message': str(e)}, status=status.HTTP_200_OK)
     
-    def process_message(self, message_text, sender_number):
-        """
-        Process incoming messages with robust session management.
-        Handles session expiry and continuous conversation flow.
-        """
-        # Get or create session
-        session = get_or_create_session(sender_number)
+    def process_message(self, message_text, sender_number):  
+        """  
+        Process incoming messages with robust session management.  
+        Handles session expiry and continuous conversation flow.  
+        """  
+        # Get or create session  
+        session = get_or_create_session(sender_number)  
 
-        # Check session expiry
-        if session.current_state != 'welcome':
-            if check_session_expiry(session):
-                # If expired, reset to welcome state to re-identify the user
-                return self.handle_welcome(message_text, sender_number, session)
+        # Check session expiry  
+        if check_session_expiry(session):  
+            # If expired, skip welcome and just show the main menu  
+            if hasattr(session, 'is_landlord') and session.is_landlord is True:  
+                # If user is a landlord, show main menu  
+                menu_text = landlord_main_menu()  
+                send_whatsapp_message(sender_number, menu_text)  
+                session.current_state = 'main_menu'  
+                session.save()  
+                return {'status': 'main_menu_displayed'}  
+            else:  
+                return self.handle_welcome(message_text, sender_number, session)  
 
-        # Determine the handler based on the current session state
-        # This ensures that messages are treated as part of the ongoing conversation
-        handler_method = getattr(self, f"handle_{session.current_state}", self.handle_welcome)
-        
-        # Call the handler method with the current message and session context
-        return handler_method(message_text, sender_number, session)
+        # Determine the handler based on the current session state  
+        handler_method = getattr(self, f"handle_{session.current_state}", self.handle_welcome)  
+
+        # Call the handler method with the current message and session context  
+        return handler_method(message_text, sender_number, session)  
     
-    def handle_welcome(self, message_text, sender_number, session):
-        """Handle the welcome state - first contact with the app."""
-        # Check if this is a returning user
-        try:
-            landlord = Landlord.objects.get(whatsapp_number=sender_number)
-            session.is_landlord = True
-            session.current_state = 'main_menu'
-            session.save()
-            
-            # Send the main menu for returning landlords
-            menu_text = landlord_main_menu(landlord.name)
-            send_whatsapp_message(sender_number, menu_text)
-            return {'status': 'returning_landlord'}
-        except Landlord.DoesNotExist:
-            pass
-        
-        try:
-            tenant = Tenant.objects.get(whatsapp_number=sender_number)
-            session.is_landlord = False
-            session.current_state = 'tenant_menu'
-            session.save()
-            
-            # Send the tenant menu
-            tenant_menu = format_menu(
-                f"Welcome back {tenant.name}! What would you like to do today?",
-                {
-                    "1": "check your rent status",
-                    "2": "view your payment history",
-                    "3": "contact your landlord",
-                    "4": "exit"
-                }
-            )
-            send_whatsapp_message(sender_number, tenant_menu)
-            return {'status': 'returning_tenant'}
-        except Tenant.DoesNotExist:
-            pass
-        
-        # New user - send welcome message
-        welcome_message = (
-            "Welcome! I am \"Le Bailleur\", your rent management automatic assistant. "
-            "I can help you track rent payments, send notifications, and manage your properties.\n\n"
-            "Please type:\n"
-            "1 - If you are a landlord\n"
-            "2 - If you are a tenant"
-        )
-        send_whatsapp_message(sender_number, welcome_message)
-        session.current_state = 'user_type_selection'
-        session.save()
-        
-        return {'status': 'welcome_sent'}
+    def handle_welcome(self, message_text, sender_number, session):  
+        """Handle the welcome state - first contact with the app."""  
+        # Check if this is a returning user  
+        try:  
+            landlord = Landlord.objects.get(whatsapp_number=sender_number)  
+            session.is_landlord = True  
+            session.current_state = 'main_menu'  # Set to main menu since they are returning  
+            session.save()  
+
+            # Send the main menu for returning landlords  
+            menu_text = landlord_main_menu(landlord.name)  
+            send_whatsapp_message(sender_number, menu_text)  
+            return {'status': 'returning_landlord'}  
+        except Landlord.DoesNotExist:  
+            pass  
+
+        try:  
+            tenant = Tenant.objects.get(whatsapp_number=sender_number)  
+            session.is_landlord = False  
+            session.current_state = 'tenant_menu'  
+            session.save()  
+
+            # Send the tenant menu  
+            tenant_menu = format_menu(  
+                f"Welcome back {tenant.name}! What would you like to do today?",  
+                {  
+                    "1": "check your rent status",  
+                    "2": "view your payment history",  
+                    "3": "contact your landlord",  
+                    "4": "exit"  
+                }  
+            )  
+            send_whatsapp_message(sender_number, tenant_menu)  
+            return {'status': 'returning_tenant'}  
+        except Tenant.DoesNotExist:  
+            pass  
+
+        # New user - send welcome message (first time)  
+        welcome_message = (  
+            "Welcome! I am \"Le Bailleur\", your rent management automatic assistant. "  
+            "I can help you track rent payments, send notifications, and manage your properties.\n\n"  
+            "Please type:\n"  
+            "1 - If you are a landlord\n"  
+            "2 - If you are a tenant"  
+        )  
+        send_whatsapp_message(sender_number, welcome_message)  
+        session.current_state = 'user_type_selection'  
+        session.save()  
+
+        return {'status': 'welcome_sent'}  
     
     def handle_user_type_selection(self, message_text, sender_number, session):
         """Handle user type selection (landlord or tenant)."""
