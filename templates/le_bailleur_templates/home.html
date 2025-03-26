@@ -1,6 +1,17 @@
 {% extends 'base.html' %}
+{% load static %}
+
 
 {% block content %}
+<!-- Add the Hero Image Below the Navigation -->  
+<div class="relative">  
+    <img src="{% static '../../static/images/hero.jpeg' %}" alt="Hero Image" class="w-full h-auto object-cover" id="slideImg"/>  
+    <div class="absolute inset-0 bg-black opacity-25"></div> 
+    <div class="absolute inset-0 flex items-center justify-center">  
+        <h2 class="text-white text-3xl font-bold" id = 'projectDescrip'>Automatically track rent due dates and send notifications to tenants and landlords.</h2> 
+    </div>  
+</div> 
+
 <div class="container mx-auto px-4 py-8">
     <div class="text-center">
         <h1 class="text-4xl font-bold mb-4 text-blue-600">LeBailleur: Your Rent Management Solution</h1>
@@ -22,10 +33,45 @@
         </div>
     </div>
 
+
+  
+
     <div class="text-center mt-12">
         <a href="https://wa.me/+15556311809" class="bg-green-500 text-white px-6 py-3 rounded-full text-lg hover:bg-green-600 transition">
             Start Using LeBailleur on WhatsApp
         </a>
     </div>
 </div>
+
+
+<!-- Image animation --> 
+ <script>
+    let slideImg = document.getElementById("slideImg");
+    let projectDescrip = document.getElementById('projectDescrip');
+
+    let images = new Array(
+        '../../static/images/hero.jpeg',
+        '../../static/images/hero-2.jpeg',
+        '../../static/images/hero-3.jpeg'
+    )
+    let features = new Array(
+        'Automatically track rent due dates and send notifications to tenants and landlords.',
+        'Manage your rentals directly through WhatsApp - no additional apps required.',
+        'Get instant updates on rent payments, due dates, and tenant status.'
+    )
+    let length = images.length;
+    let i = 0;
+
+    function slider(){
+        if (i > length - 1){
+            i = 0
+        }
+        slideImg.src = images[i];
+        projectDescrip.textContent = features[i];
+
+        i++;
+        setTimeout('slider()', 3000);
+    }
+ </script>
+
 {% endblock %}

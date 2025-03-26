@@ -1,42 +1,132 @@
 {% extends 'base.html' %}
+{% load static %}
 
 {% block content %}
-<div class="container mx-auto px-4 py-8">
-    <h1 class="text-3xl font-bold mb-6 text-blue-600">How to Use LeBailleur</h1>
-
-    <div class="bg-white shadow-md rounded-lg p-8">
-        <div class="mb-6">
-            <h2 class="text-2xl font-semibold mb-4 text-blue-500">Step 1: Sign Up</h2>
-            <p>Send a message to +1 555 631 1809. Choose 1 if you're a landlord or 2 if you're a tenant.</p>
+<!-- Hero Slideshow -->
+<div class="relative hero-slideshow overflow-hidden">
+    <!-- Slides Container -->
+    <div class="slides-container transition-transform duration-500 ease-in-out flex">
+        <!-- Slide 1 -->
+        <div class="slide relative w-full flex-shrink-0">
+            <img src="{% static '../../static/images/hero.jpeg' %}" alt="Rent Tracking" class="w-full h-[600px] object-cover" />
+            <div class="absolute inset-0 bg-black opacity-50"></div>
+            <div class="absolute inset-0 flex items-center justify-center text-center px-4">
+                <div class="text-white max-w-2xl">
+                    <h2 class="text-4xl font-bold mb-4 animate-fadeIn">
+                        Automatically track rent due dates and send notifications to tenants and landlords.
+                    </h2>
+                </div>
+            </div>
         </div>
 
-        <div class="mb-6">
-            <h2 class="text-2xl font-semibold mb-4 text-blue-500">Step 2: Landlord Registration</h2>
-            <ul class="list-disc list-inside">
-                <li>Enter your name</li>
-                <li>Add property details</li>
-                <li>Specify rent entity (room, studio, etc.)</li>
-                <li>Set rent price</li>
-                <li>Add tenant information</li>
-            </ul>
+        <!-- Slide 2 -->
+        <div class="slide relative w-full flex-shrink-0">
+            <img src="{% static '../../static/images/hero-2.jpeg' %}" alt="WhatsApp Integration" class="w-full h-[600px] object-cover" />
+            <div class="absolute inset-0 bg-black opacity-50"></div>
+            <div class="absolute inset-0 flex items-center justify-center text-center px-4">
+                <div class="text-white max-w-2xl">
+                    <h2 class="text-4xl font-bold mb-4 animate-fadeIn">
+                        Manage your rentals directly through WhatsApp - no additional apps required.
+                    </h2>
+                </div>
+            </div>
         </div>
 
-        <div class="mb-6">
-            <h2 class="text-2xl font-semibold mb-4 text-blue-500">Step 3: Tenant Management</h2>
-            <p>Use the menu to:</p>
-            <ul class="list-disc list-inside">
-                <li>Register new properties</li>
-                <li>Add or remove tenants</li>
-                <li>Check rent status</li>
-                <li>Update payment information</li>
-            </ul>
-        </div>
-
-        <div class="text-center mt-8">
-            <a href="https://wa.me/+15556311809" class="bg-blue-500 text-white px-6 py-3 rounded-full text-lg hover:bg-blue-600 transition">
-                Start Using LaBailleur
-            </a>
+        <!-- Slide 3 -->
+        <div class="slide relative w-full flex-shrink-0">
+            <img src="{% static '../../static/images/hero-3.jpeg' %}" alt="Real-time Updates" class="w-full h-[600px] object-cover" />
+            <div class="absolute inset-0 bg-black opacity-50"></div>
+            <div class="absolute inset-0 flex items-center justify-center text-center px-4">
+                <div class="text-white max-w-2xl">
+                    <h2 class="text-4xl font-bold mb-4 animate-fadeIn">
+                        Get instant updates on rent payments, due dates, and tenant status.
+                    </h2>
+                </div>
+            </div>
         </div>
     </div>
+
+    <!-- Navigation Dots -->
+    <div class="absolute bottom-6 left-1/2 transform -translate-x-1/2 flex space-x-2">
+        <button class="slide-dot w-3 h-3 bg-white rounded-full opacity-50" data-slide="0"></button>
+        <button class="slide-dot w-3 h-3 bg-white rounded-full opacity-50" data-slide="1"></button>
+        <button class="slide-dot w-3 h-3 bg-white rounded-full opacity-50" data-slide="2"></button>
+    </div>
 </div>
+
+<!-- Rest of your existing content -->
+<div class="container mx-auto px-4 py-8">
+    <div class="text-center">
+        <h1 class="text-4xl font-bold mb-4 text-blue-600">LeBailleur: Your Rent Management Solution</h1>
+        <p class="text-xl text-gray-600 mb-8">Simplify rent tracking with our WhatsApp-powered app</p>
+    </div>
+
+    <div class="grid md:grid-cols-3 gap-6">
+        <div class="bg-white p-6 rounded-lg shadow-md">
+            <h2 class="text-2xl font-semibold mb-4 text-blue-500">Easy Tracking</h2>
+            <p>Automatically track rent due dates and send notifications to tenants and landlords.</p>
+        </div>
+        <div class="bg-white p-6 rounded-lg shadow-md">
+            <h2 class="text-2xl font-semibold mb-4 text-blue-500">WhatsApp Integration</h2>
+            <p>Manage your rentals directly through WhatsApp - no additional apps required.</p>
+        </div>
+        <div class="bg-white p-6 rounded-lg shadow-md">
+            <h2 class="text-2xl font-semibold mb-4 text-blue-500">Real-time Updates</h2>
+            <p>Get instant updates on rent payments, due dates, and tenant status.</p>
+        </div>
+    </div>
+
+    <div class="text-center mt-12">
+        <a href="https://wa.me/+15556311809" class="bg-green-500 text-white px-6 py-3 rounded-full text-lg hover:bg-green-600 transition">
+            Start Using LeBailleur on WhatsApp
+        </a>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const slidesContainer = document.querySelector('.slides-container');
+    const slides = document.querySelectorAll('.slide');
+    const dots = document.querySelectorAll('.slide-dot');
+    let currentSlide = 0;
+
+    // Function to go to a specific slide
+    function goToSlide(slideIndex) {
+        // Reset dot styles
+        dots.forEach(dot => dot.classList.remove('bg-blue-500'));
+        dots.forEach(dot => dot.classList.add('opacity-50'));
+
+        // Activate current dot
+        dots[slideIndex].classList.add('bg-blue-500');
+        dots[slideIndex].classList.remove('opacity-50');
+
+        // Move slides
+        slidesContainer.style.transform = `translateX(-${slideIndex * 100}%)`;
+        currentSlide = slideIndex;
+    }
+
+    // Auto-slide functionality
+    function nextSlide() {
+        currentSlide = (currentSlide + 1) % slides.length;
+        goToSlide(currentSlide);
+    }
+
+    // Add click event to dots
+    dots.forEach(dot => {
+        dot.addEventListener('click', () => {
+            const slideIndex = parseInt(dot.dataset.slide);
+            goToSlide(slideIndex);
+        });
+    });
+
+    // Start with first slide
+    goToSlide(0);
+
+    // Auto-advance slides every 5 seconds
+    setInterval(nextSlide, 5000);
+});
+</script>
 {% endblock %}
