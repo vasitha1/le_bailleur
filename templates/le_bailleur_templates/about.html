@@ -1,0 +1,44 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <div class="max-w-2xl mx-auto bg-white shadow-md rounded-lg p-8">
+        <h1 class="text-3xl font-bold mb-6 text-blue-600 text-center">About the Developer</h1>
+        
+        <div class="text-center mb-8">
+            <img src="{% static 'profile.jpg' %}" alt="Developer Profile" class="w-48 h-48 rounded-full mx-auto mb-4 object-cover">
+            <h2 class="text-2xl font-semibold">Your Name</h2>
+            <p class="text-gray-600">Software Developer</p>
+        </div>
+
+        <div class="mb-6">
+            <h3 class="text-xl font-semibold mb-4 text-blue-500">About Me</h3>
+            <p>
+                I'm a passionate software developer dedicated to creating innovative solutions 
+                that simplify everyday challenges. LeBailleur was born from my Dad's struggles with
+                property management and a desire to make rent tracking seamless and stress-free.
+            </p>
+        </div>
+
+        <div class="mb-6">
+            <h3 class="text-xl font-semibold mb-4 text-blue-500">Technical Skills</h3>
+            <ul class="list-disc list-inside">
+                <li>Django Web Development</li>
+                <li>WhatsApp API Integration</li>
+                <li>Python Backend Programming</li>
+                <li>Responsive Web Design</li>
+            </ul>
+        </div>
+
+        <div class="text-center">
+            <h3 class="text-xl font-semibold mb-4 text-blue-500">Contact Me</h3>
+            <div class="flex justify-center space-x-4">
+                <a href="https://www.linkedin.com/in/yourusername" target="_blank" class="text-blue-500 hover:text-blue-700">LinkedIn</a>
+                <a href="https://github.com/yourusername" target="_blank" class="text-blue-500 hover:text-blue-700">GitHub</a>
+                <a href="mailto:youremail@example.com" class="text-blue-500 hover:text-blue-700">Email</a>
+                <a href="tel:+1555-631-1809" class="text-blue-500 hover:text-blue-700">Phone</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -24,9 +24,6 @@ from django.utils.decorators import method_decorator
 from django.conf import settings
 import sys
 
-class HomeView(TemplateView):
-    template_name = 'le_bailleur_templates/index.html'
-
 class CreateLandlord(generics.CreateAPIView):
     queryset = Landlord.objects.all()
     serializer_class = LandlordSerializer

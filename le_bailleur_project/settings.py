@@ -63,7 +63,8 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     #ADDED APPLICATIONS
     'properties', 
-    'rest_framework', 
+    'rest_framework',
+    'landing_page' 
 ]
 
 MIDDLEWARE = [
@@ -81,7 +82,7 @@ ROOT_URLCONF = 'le_bailleur_project.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [os.path.join(BASE_DIR, 'templates')],
+        'DIRS': [os.path.join(BASE_DIR, 'templates/le_bailleur_templates')],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [

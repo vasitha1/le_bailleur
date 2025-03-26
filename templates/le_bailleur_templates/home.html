@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <div class="text-center">
+        <h1 class="text-4xl font-bold mb-4 text-blue-600">LeBailleur: Your Rent Management Solution</h1>
+        <p class="text-xl text-gray-600 mb-8">Simplify rent tracking with our WhatsApp-powered app</p>
+    </div>
+
+    <div class="grid md:grid-cols-3 gap-6">
+        <div class="bg-white p-6 rounded-lg shadow-md">
+            <h2 class="text-2xl font-semibold mb-4 text-blue-500">Easy Tracking</h2>
+            <p>Automatically track rent due dates and send notifications to tenants and landlords.</p>
+        </div>
+        <div class="bg-white p-6 rounded-lg shadow-md">
+            <h2 class="text-2xl font-semibold mb-4 text-blue-500">WhatsApp Integration</h2>
+            <p>Manage your rentals directly through WhatsApp - no additional apps required.</p>
+        </div>
+        <div class="bg-white p-6 rounded-lg shadow-md">
+            <h2 class="text-2xl font-semibold mb-4 text-blue-500">Real-time Updates</h2>
+            <p>Get instant updates on rent payments, due dates, and tenant status.</p>
+        </div>
+    </div>
+
+    <div class="text-center mt-12">
+        <a href="https://wa.me/+15556311809" class="bg-green-500 text-white px-6 py-3 rounded-full text-lg hover:bg-green-600 transition">
+            Start Using LeBailleur on WhatsApp
+        </a>
+    </div>
+</div>
+{% endblock %}

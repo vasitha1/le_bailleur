@@ -1,0 +1,42 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <h1 class="text-3xl font-bold mb-6 text-blue-600">How to Use LeBailleur</h1>
+
+    <div class="bg-white shadow-md rounded-lg p-8">
+        <div class="mb-6">
+            <h2 class="text-2xl font-semibold mb-4 text-blue-500">Step 1: Sign Up</h2>
+            <p>Send a message to +1 555 631 1809. Choose 1 if you're a landlord or 2 if you're a tenant.</p>
+        </div>
+
+        <div class="mb-6">
+            <h2 class="text-2xl font-semibold mb-4 text-blue-500">Step 2: Landlord Registration</h2>
+            <ul class="list-disc list-inside">
+                <li>Enter your name</li>
+                <li>Add property details</li>
+                <li>Specify rent entity (room, studio, etc.)</li>
+                <li>Set rent price</li>
+                <li>Add tenant information</li>
+            </ul>
+        </div>
+
+        <div class="mb-6">
+            <h2 class="text-2xl font-semibold mb-4 text-blue-500">Step 3: Tenant Management</h2>
+            <p>Use the menu to:</p>
+            <ul class="list-disc list-inside">
+                <li>Register new properties</li>
+                <li>Add or remove tenants</li>
+                <li>Check rent status</li>
+                <li>Update payment information</li>
+            </ul>
+        </div>
+
+        <div class="text-center mt-8">
+            <a href="https://wa.me/+15556311809" class="bg-blue-500 text-white px-6 py-3 rounded-full text-lg hover:bg-blue-600 transition">
+                Start Using LaBailleur
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}
