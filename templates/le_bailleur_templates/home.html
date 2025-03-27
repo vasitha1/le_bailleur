@@ -7,71 +7,172 @@
 <div class="relative">  
     <img src="{% static '../../static/images/hero.jpeg' %}" alt="Hero Image" class="w-full h-auto object-cover" id="slideImg"/>  
     <div class="absolute inset-0 bg-black opacity-25"></div> 
-    <div class="absolute inset-0 flex items-center justify-center">  
-        <h2 class="text-white text-3xl font-bold" id = 'projectDescrip'>Automatically track rent due dates and send notifications to tenants and landlords.</h2> 
-    </div>  
-</div> 
-
-<div class="container mx-auto px-4 py-8">
-    <div class="text-center">
-        <h1 class="text-4xl font-bold mb-4 text-blue-600">LeBailleur: Your Rent Management Solution</h1>
-        <p class="text-xl text-gray-600 mb-8">Simplify rent tracking with our WhatsApp-powered app</p>
+    <div class="absolute inset-0 flex flex-col items-center justify-center text-center space-y-4 px-4">  
+        <h2 class="text-white text-6xl font-['Playfair_Display'] font-bold tracking-wide drop-shadow-lg">LE BAILLEUR:</h2>
+        <h3 class="text-white text-4xl font-['Montserrat'] font-light max-w-2xl mx-auto leading-tight drop-shadow-md" id = 'projectDescrip'>
+            Automatically track rent due dates and send notifications to tenants and landlords.
+        </h3> 
     </div>
+</div>  
 
-    <div class="grid md:grid-cols-3 gap-6">
-        <div class="bg-white p-6 rounded-lg shadow-md">
-            <h2 class="text-2xl font-semibold mb-4 text-blue-500">Easy Tracking</h2>
-            <p>Automatically track rent due dates and send notifications to tenants and landlords.</p>
+<div class="hero-container" id="scroll-animation-container">
+    <div class="hero-content">
+        <div class="hero-image-container" id="image-container">
+            <img 
+                src="{% static '../../static/images/hero-4.jpg' %}" 
+                alt="LeBailleur App" 
+                class="hero-image"
+                id="scrolling-image"
+            />
         </div>
-        <div class="bg-white p-6 rounded-lg shadow-md">
-            <h2 class="text-2xl font-semibold mb-4 text-blue-500">WhatsApp Integration</h2>
-            <p>Manage your rentals directly through WhatsApp - no additional apps required.</p>
-        </div>
-        <div class="bg-white p-6 rounded-lg shadow-md">
-            <h2 class="text-2xl font-semibold mb-4 text-blue-500">Real-time Updates</h2>
-            <p>Get instant updates on rent payments, due dates, and tenant status.</p>
+        <div class="hero-text-container" id="text-container">
+            <p class="hero-text" id="scrolling-text">
+                Simplify rent tracking 
+                <br/>
+                with our WhatsApp-powered 
+                <br/>
+                app 🏠
+            </p>
         </div>
     </div>
+</div>
 
+<div class="wheel-scroll-container" id="wheel-scroll-container">
+    <div class="feature-wheel" id="feature-wheel">
+        <div class="feature-card feature-card-1">
+            <img src="../../static/images/tracking-image.jpg" alt="Easy Tracking" class="feature-card-image">
+            <div class="feature-card-content">
+                <h2>Easy Tracking</h2>
+                <p>Automatically tracks rent due dates and send notifications to tenants and landlords.</p>
+            </div>
+        </div>
+        <div class="feature-card feature-card-2">
+            <img src="../../static/images/whatsapp-image.jpg" alt="WhatsApp Integration" class="feature-card-image">
+            <div class="feature-card-content">
+                <h2>WhatsApp Integration</h2>
+                <p>Manages your rentals directly through WhatsApp - no additional apps required.</p>
+            </div>
+        </div>
+        <div class="feature-card feature-card-3">
+            <img src="../../static/images/updates-image.jpg" alt="Real-time Updates" class="feature-card-image">
+            <div class="feature-card-content">
+                <h2>Real-time Updates</h2>
+                <p>Gives instant updates on rent payments, due dates, and tenant status.</p>
+            </div>
+        </div>
+    </div>
+</div>
 
-  
-
-    <div class="text-center mt-12">
-        <a href="https://wa.me/+15556311809" class="bg-green-500 text-white px-6 py-3 rounded-full text-lg hover:bg-green-600 transition">
+    <div class="cta-container">
+        <a href="https://wa.me/+15556311809" class="cta-button">
             Start Using LeBailleur on WhatsApp
         </a>
     </div>
 </div>
 
 
-<!-- Image animation --> 
- <script>
-    let slideImg = document.getElementById("slideImg");
-    let projectDescrip = document.getElementById('projectDescrip');
+<section class="about-section" id="about">
+    <div class="about-container">
+        <div class="about-content">
+            <h2>About LeBailleur</h2>
+            
+            <div class="about-story">
+                <h3>Our Inspiration</h3>
+                <p>LeBailleur was born from a deeply personal challenge faced by my 79-year-old father, a dedicated landlord managing a portfolio of 80 tenants. Every month, he would struggle with a complex system of receipts, attempting to track who owes what – be it rent, electricity, light, or wifi.</p>
+                
+                <p>This journey began with a simple observation: managing rental properties can be overwhelmingly complicated, especially for seasoned landlords dealing with multiple tenants and various utility payments.</p>
+                
+                <p>Although this is just the Minimum Viable Product (MVP), we believe LeBailleur will provide a transformative solution to simplify property management and bring clarity to landlords' financial tracking.</p>
+            </div>
+            
+            <div class="about-developer">
+                <h3>Developer</h3>
+                <p>LeBailleur was developed by Sulem Yong Vasitha Felsimbom</p>
+                
+                <div class="developer-links">
+                    <a href="https://www.linkedin.com/in/softwareengineervasitha" target="_blank" class="linkedin-link">
+                        <i class="fab fa-linkedin"></i> LinkedIn Profile
+                    </a>
+                    <a href="https://github.com/vasitha1" target="_blank" class="github-link">
+                        <i class="fab fa-github"></i> GitHub Profile
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
 
-    let images = new Array(
-        '../../static/images/hero.jpeg',
-        '../../static/images/hero-2.jpeg',
-        '../../static/images/hero-3.jpeg'
-    )
-    let features = new Array(
-        'Automatically track rent due dates and send notifications to tenants and landlords.',
-        'Manage your rentals directly through WhatsApp - no additional apps required.',
-        'Get instant updates on rent payments, due dates, and tenant status.'
-    )
-    let length = images.length;
-    let i = 0;
 
-    function slider(){
-        if (i > length - 1){
-            i = 0
+
+
+
+
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        let slideImg = document.getElementById("slideImg");
+        let projectDescrip = document.getElementById('projectDescrip');
+
+        let images = new Array(
+            '../../static/images/hero.jpeg',
+            '../../static/images/hero-2.jpeg',
+            '../../static/images/hero-3.jpeg'
+        );
+
+        let features = new Array(
+            'Automatically track rent due dates and send notifications to tenants and landlords.',
+            'Manage your rentals directly through WhatsApp - no additional apps required.',
+            'Get instant updates on rent payments, due dates, and tenant status.'
+        );
+
+        let length = images.length;
+        let i = 0;
+
+        function typeText(text, element) {
+            element.textContent = '';
+            let charIndex = 0;
+            
+            function typing() {
+                if (charIndex < text.length) {
+                    element.textContent += text.charAt(charIndex);
+                    charIndex++;
+                    setTimeout(typing, 50); // Adjust typing speed (50ms between characters)
+                }
+            }
+            
+            typing();
         }
-        slideImg.src = images[i];
-        projectDescrip.textContent = features[i];
 
-        i++;
-        setTimeout('slider()', 3000);
-    }
- </script>
+        function slider() {
+            if (i >= length) {
+                i = 0;
+            }
+            
+            slideImg.src = images[i];
+            
+            // Type out the current feature
+            typeText(features[i], projectDescrip);
 
+            i++;
+            setTimeout(slider, 6000);
+        }
+
+        // Start the slider when DOM is loaded
+        slider();
+
+        // Existing scroll parallax effect
+        const image = document.getElementById('scrolling-image');
+        const text = document.getElementById('scrolling-text');
+        
+        window.addEventListener('scroll', function() {
+            // Get the scroll position
+            let scrollPosition = window.pageYOffset;
+            
+            // Different parallax speeds for image and text
+            // Negative values move up as you scroll
+            image.style.transform = `translateY(${-scrollPosition * 0.3}px)`;
+            text.style.transform = `translateY(${-scrollPosition * 0.5}px)`;
+        });
+    });
+</script>
 {% endblock %}
