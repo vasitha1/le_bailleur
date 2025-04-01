@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Property, Tenant, Landlord, RentEntity, PaymentReceipt, Session
+from .models import Property, Tenant, Landlord, RentEntity, PaymentReceipt
 
 class LandlordSerializer(serializers.ModelSerializer):
     class Meta:
@@ -57,8 +57,3 @@ class PaymentReceiptSerializer(serializers.ModelSerializer):
     
     def get_tenant_name(self, obj):
         return obj.tenant.name if obj.tenant else None
-
-class SessionSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Session
-        fields = '__all__'

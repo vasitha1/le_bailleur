@@ -6,7 +6,7 @@ from django.views.generic import TemplateView
 from django.utils import timezone
 from django.db import transaction
 from dateutil.relativedelta import relativedelta
-from .models import Property, Tenant, Landlord, RentEntity, Session, PaymentReceipt, WhatsAppMessage
+from .models import Property, Tenant, Landlord, RentEntity, PaymentReceipt, WhatsAppMessage
 from .serializers import (
     PropertySerializer, TenantSerializer, LandlordSerializer, 
     RentEntitySerializer, PaymentReceiptSerializer
@@ -95,526 +95,655 @@ class WhatsAppWebhook(APIView):
             logging.warning("Webhook verification failed")
             return JsonResponse({'error': 'token verification failed'}, status=403)
     
-    def post(self, request, *args, **kwargs):  
-        """Handle incoming WhatsApp webhook messages."""  
-        print("======== WEBHOOK POST REQUEST RECEIVED ========")  
-        try:  
-            print(f"Raw request body: {request.body.decode('utf-8')}")  
-            # Parse incoming JSON payload  
-            payload = json.loads(request.body)  
-
-            logging.info("Received webhook POST payload")  # Debugging  
-            logging.debug(f"Payload content: {payload}")  
-            print(f"Parsed payload: {json.dumps(payload, indent=2)}")  # Debugging  
-
-            if 'object' in payload and payload['object'] == 'whatsapp_business_account':  
-                for entry in payload.get('entry', []):  
-                    for change in entry.get('changes', []):  
-                        if change.get('field') == 'messages':  
-                            value = change.get('value', {})  
-                            messages = value.get('messages', [])  
-
-                            if not messages:  
-                                logging.info("No messages found in payload")  
-                                continue  
-
-                            for message in messages:  
-                                message_type = message.get('type')  
-                                sender_id = message.get('from')  
-
-                                # Remove the '+' sign from the sender_id  
-                                if sender_id.startswith('+'):  
-                                    sender_id = sender_id[1:]  # Remove the first character ('+') 
-
-                                 # Check if the number starts with the country code '237'
-                                if sender_id.startswith('237'):
-                                    # If it doesn't already have a '6' after '237', add '6'
-                                    if sender_id[3] != '6': 
-                                        sender_id = sender_id[:3] + '6' + sender_id[3:] 
-
-                                print(sender_id) #for debugging
-
-                                logging.info(f"Processing message from: {sender_id}, type: {message_type}")  
-
-                                if message_type == 'text':  
-                                    message_text = message.get('text', {}).get('body', '')  
-                                    logging.info(f"Message content: {message_text}")  
-
-                                    # Process the message  
-                                    response = self.process_message(message_text, sender_id)  
-
-                                    # Log the complete message for debugging  
-                                    with open("message_log.json", "a") as log_file:  
-                                        log_file.write(json.dumps(message) + "\n")  
-                                elif message_type in ['image', 'audio', 'video', 'document']:  
-                                    # Handle media messages if needed  
-                                    logging.info(f"Received {message_type} message from {sender_id}")  
-                                    # You can implement media handling here  
-                                else:  
-                                    logging.info(f"Received unsupported message type: {message_type}")  
-
-                # Always return 200 OK for webhook deliveries  
-                return Response({'status': 'success'}, status=status.HTTP_200_OK)  
-
-            logging.warning("Invalid payload structure")  
-            return Response({'status': 'Invalid payload structure'}, status=status.HTTP_200_OK)  
-
-        except Exception as e:  
-            logging.error(f"Error processing webhook: {str(e)}", exc_info=True)  
-            # Still return 200 OK to acknowledge receipt (WhatsApp expects this)  
-            return Response({'status': 'error', 'message': str(e)}, status=status.HTTP_200_OK)
-    
-    def process_message(self, message_text, sender_number):  
-        """  
-        Process incoming messages with robust session management.  
-        Handles session expiry and continuous conversation flow.  
-        """  
-        # Get or create session  
-        session = get_or_create_session(sender_number)  
-
-        # Check session expiry  
-        if check_session_expiry(session):  
-            # If expired, skip welcome and just show the main menu  
-            if hasattr(session, 'is_landlord') and session.is_landlord is True:  
-                # If user is a landlord, show main menu  
-                menu_text = landlord_main_menu()  
-                send_whatsapp_message(sender_number, menu_text)  
-                session.current_state = 'main_menu'  
-                session.save()  
-                return {'status': 'main_menu_displayed'}  
-            else:  
-                return self.handle_welcome(message_text, sender_number, session)  
-
-        # Determine the handler based on the current session state  
-        handler_method = getattr(self, f"handle_{session.current_state}", self.handle_welcome)  
-
-        # Call the handler method with the current message and session context  
-        return handler_method(message_text, sender_number, session)  
-    
-    def handle_welcome(self, message_text, sender_number, session):  
-        """Handle the welcome state - first contact with the app."""  
-        # Check if this is a returning user  
-        try:  
-            landlord = Landlord.objects.get(whatsapp_number=sender_number)  
-            session.is_landlord = True  
-            session.current_state = 'main_menu'  # Set to main menu since they are returning  
-            session.save()  
-
-            # Send the main menu for returning landlords  
-            menu_text = landlord_main_menu(landlord.name)  
-            send_whatsapp_message(sender_number, menu_text)  
-            return {'status': 'returning_landlord'}  
-        except Landlord.DoesNotExist:  
-            pass  
-
-        try:  
-            tenant = Tenant.objects.get(whatsapp_number=sender_number)  
-            session.is_landlord = False  
-            session.current_state = 'tenant_menu'  
-            session.save()  
-
-            # Send the tenant menu  
-            tenant_menu = format_menu(  
-                f"Welcome back {tenant.name}! What would you like to do today?",  
-                {  
-                    "1": "check your rent status",  
-                    "2": "view your payment history",  
-                    "3": "contact your landlord",  
-                    "4": "exit"  
-                }  
-            )  
-            send_whatsapp_message(sender_number, tenant_menu)  
-            return {'status': 'returning_tenant'}  
-        except Tenant.DoesNotExist:  
-            pass  
-
-        # New user - send welcome message (first time)  
-        welcome_message = (  
-            "Welcome! I am \"Le Bailleur\", your rent management automatic assistant. "  
-            "I can help you track rent payments, send notifications, and manage your properties.\n\n"  
-            "Please type:\n"  
-            "1 - If you are a landlord\n"  
-            "2 - If you are a tenant"  
-        )  
-        send_whatsapp_message(sender_number, welcome_message)  
-        session.current_state = 'user_type_selection'  
-        session.save()  
-
-        return {'status': 'welcome_sent'}  
-    
-    def handle_user_type_selection(self, message_text, sender_number, session):
-        """Handle user type selection (landlord or tenant)."""
-        message_text = message_text.strip()
+    def post(self, request):
+        current_state = 'initial'
+        if current_state:
+            message_text = message_text.lower()
+            
+            if 'hi' in ['hi', 'hello', 'start', 'hey']:
+                send_whatsapp_message(sender_number, welcome_message)
+                return Response({"status": "welcome_sent"})
+            else:
+                # Check for session expiration before handling message
+                if self.is_expired(sender_number):
+                    # Reset state to initial and inform user
+                    self.reset_user_state(sender_number)
+                    send_whatsapp_message(
+                        sender_number,
+                        "Your session has expired due to inactivity. Welcome back to the main menu."
+                    )
+            # For landlords, go directly to main menu instead of initial state
+            user_type = self.get_user_type(sender_number)
+                if user_type == 'landlord':
+                    return self.handle_main_menu(message_text, sender_number)
+                return Response({"status": "session_expired"})
+                result = self.handle_message(message_text, sender_number)
         
-        if message_text == '1':
-            # User is a landlord
-            session.is_landlord = True
-            session.current_state = 'landlord_name'
-            session.save()
+        elif current_state == 'landlord_name':
+            result = self.handle_landlord_name(message_text, sender_number)
+        
+        elif current_state == 'property_name':
+            result = self.handle_property_name(message_text, sender_number)
+        
+        elif current_state == 'property_address':
+            result = self.handle_property_address(message_text, sender_number)
+        
+        elif current_state == 'welcome':
+            result = self.handle_main_menu(message_text, sender_number)
+
+         elif current_state == 'landlord_menu':
+            result = self.handle_main_menu(message_text, sender_number)
+        # Add more state handlers as needed for various flows
+        
+        else:
+            # Default handling for unknown states
+            send_whatsapp_message(sender_number, welcome_message)
+        
+        # Reset user state
+        if user_type == 'landlord':
+            landlord = Landlord.objects.get(whatsapp_number=sender_number)
+            landlord.current_state = 'initial'
+            landlord.save()
+        
+        elif user_type == 'tenant':
+            tenant = Tenant.objects.get(whatsapp_number=sender_number)
+            tenant.current_state = 'initial'
+            tenant.save()
+        
+        else:
+            unidentified = UnidentifiedUser.objects.get(whatsapp_number=sender_number)
+            unidentified.current_state = 'initial'
+            unidentified.save()
+        
+        result = {"status": "reset_to_initial"}
+        
+        return Response(result)
+    
+    def handle_message(self, message_text, sender_number):
+        """Handle the initial message to determine if user is landlord or tenant."""
+        
+        if message_text == "1":
+            # Try to get existing landlord or create a new unidentified user
+            try:
+                landlord = Landlord.objects.get(whatsapp_number=sender_number)
+                landlord.current_state = 'landlord_name' if not landlord.name else 'welcome'
+                landlord.last_activity = timezone.now()  # Update last activity timestamp
+                landlord.save()
+                
+                if not landlord.name:
+                    send_whatsapp_message(
+                        sender_number,
+                        "Great! Let's set up your landlord account. Please enter your full name:"
+                    )
+                else:
+                    send_whatsapp_message(
+                        sender_number,
+                        f"Welcome back, {landlord.name}! Would you like to add a new property? Please enter the property name:"
+                    )
+            except Landlord.DoesNotExist:
+                # Create a new landlord with initial state
+                landlord = Landlord.objects.create(
+                    whatsapp_number=sender_number,
+                    current_state='landlord_name',
+                    last_activity=timezone.now()  # Set initial activity timestamp
+                )
+                send_whatsapp_message(
+                    sender_number,
+                    "Great! Let's set up your landlord account. Please enter your full name:"
+                )
+            return {"status": "processing_landlord"}
             
-            send_whatsapp_message(
-                sender_number, 
-                "Great! Let's set up your landlord account. Please enter your full name:"
-            )
-            return {'status': 'landlord_selected'}
+        elif message_text == "2":
+            # Try to get existing tenant or create a new unidentified user
+            try:
+                tenant = Tenant.objects.get(whatsapp_number=sender_number)
+                tenant.current_state = 'tenant_menu'
+                landlord.last_activity = timezone.now()  # Update last activity timestamp
+                tenant.save()
+                
+                send_whatsapp_message(
+                    sender_number,
+                    f"Welcome back, {tenant.name}! What would you like to do? Reply with:\n1. Check rent status\n2. Check bill status\n3. View payment history"
+                )
+            except Tenant.DoesNotExist:
+                # This is a new tenant
+                unidentified, created = UnidentifiedUser.objects.get_or_create(whatsapp_number=sender_number)
+                unidentified.context_data['user_type'] = 'tenant'
+                unidentified.current_state = 'tenant_info'
+                unidentified.save()
+                
+                send_whatsapp_message(
+                    sender_number,
+                    "Please contact your landlord to register you in their property."
+                )
+                send_whatsapp_message(
+                    sender_number, 
+                    "Once they have added you as a tenant, you'll receive a confirmation message."
+                )
             
-        elif message_text == '2':
-            # User is a tenant
-            session.is_landlord = False
-            session.current_state = 'tenant_info'
-            session.save()
-            
-            send_whatsapp_message(
-                sender_number, 
-                "Please contact your landlord to register you in their property. "
-                "Once they have added you as a tenant, you'll receive a confirmation message."
-            )
-            return {'status': 'tenant_selected'}
+            return {"status": "tenant_selected"}
             
         else:
             # Invalid selection
             send_whatsapp_message(
-                sender_number, 
+                sender_number,
                 "Invalid response, please type only '1' if you are a landlord or '2' if you are a tenant."
             )
-            return {'status': 'invalid_selection'}
+            return {"status": "invalid_selection"}
+        
+        return {"status": "message_handled"}
+
+    def is_expired(self, sender_number):
+        """Check if user session has expired (inactive for more than 10 minutes)"""
+        try:
+            # Try to find user in any of the user models
+            for model in [Landlord, Tenant, UnidentifiedUser]:
+                try:
+                    user = model.objects.get(whatsapp_number=sender_number)
+                    if user.last_activity:
+                        # Check if last activity was more than 10 minutes ago
+                        time_diff = timezone.now() - user.last_activity
+                        return time_diff.total_seconds() > 600  # 10 minutes in seconds
+                    return False  # No last_activity recorded
+                except model.DoesNotExist:
+                    continue
+            return False  # User not found in any model
+        except Exception as e:
+            # Log the error and default to non-expired for safety
+            print(f"Error checking session expiration: {e}")
+            return False
     
-    def handle_landlord_name(self, message_text, sender_number, session):
+    def reset_user_state(self, sender_number):
+        """Reset user state to initial when session expires"""
+        for model in [Landlord, Tenant, UnidentifiedUser]:
+            try:
+                user = model.objects.get(whatsapp_number=sender_number)
+                user.current_state = 'initial'
+                user.last_activity = timezone.now()  # Update timestamp
+                user.save()
+                return True
+            except model.DoesNotExist:
+                continue
+        return False
+    
+    def get_user_type(self, sender_number):
+        """Determine if the user is a landlord, tenant, or unidentified"""
+        try:
+            if Landlord.objects.filter(whatsapp_number=sender_number).exists():
+                return 'landlord'
+            elif Tenant.objects.filter(whatsapp_number=sender_number).exists():
+                return 'tenant'
+            else:
+                return 'unidentified'
+        except Exception:
+            return 'unidentified'
+    
+    def handle_main_menu(self, message_text, sender_number):
+        """Handle main menu options for all users"""
+        user_type = self.get_user_type(sender_number)
+        
+        # Update last activity timestamp
+        if user_type == 'landlord':
+            user = Landlord.objects.get(whatsapp_number=sender_number)
+        elif user_type == 'tenant':
+            user = Tenant.objects.get(whatsapp_number=sender_number)
+        else:
+            user = UnidentifiedUser.objects.get(whatsapp_number=sender_number)
+        
+        user.last_activity = timezone.now()
+        user.current_state = 'welcome'  # Set to main menu state
+        user.save()
+        
+        # Send appropriate main menu based on user type
+        if user_type == 'landlord':
+            menu_text = (
+                "Landlord Main Menu:\n"
+                "1. Manage your properties\n"
+                "2. Manage your rent entities\n"
+                "3. Manage your tenants\n"
+                "4. View Rent status for all your tenants\n"
+                "5. View Rent status for all your tenants that owe\n"
+                "6. View Rent status for a specific tenant\n"
+                "7. Learn more about how to use the app by visiting our website"
+                "8. Talk to customer support\n"
+                "9. Signal rent payment\n"
+                "10. Exit"
+            )
+        elif user_type == 'tenant':
+            menu_text = (
+                "Tenant Main Menu:\n"
+                "1. View your rent staus\n"
+                "2. Payment history\n"
+                "3. Contact landlord\n"
+                "4. Exit"
+            )
+        else:
+            menu_text = (
+                "Main Menu:\n"
+                "1. Register as landlord\n"
+                "2. Register as tenant\n"
+                "3. Exit"
+            )
+        
+        send_whatsapp_message(sender_number, menu_text)
+        return {"status": "main_menu_sent"}
+
+
+    def handle_landlord_name(self, message_text, sender_number):
         """Handle collecting landlord name."""
         name = message_text.strip()
         
         if not name:
             send_whatsapp_message(sender_number, "Please enter a valid name.")
-            return {'status': 'invalid_name'}
+            return {"status": "invalid_name"}
         
-        # Store name in session context for later use
-        session.context_data['landlord_name'] = name
-        session.current_state = 'landlord_creation'
-        session.save()
-        
-        # Create the landlord
-        landlord = Landlord.objects.create(
-            name=name,
-            whatsapp_number=sender_number
-        )
+        # Check if we have an unidentified user first
+        try:
+            unidentified = UnidentifiedUser.objects.get(whatsapp_number=sender_number)
+            
+            # Now create a landlord from the unidentified user
+            landlord = Landlord.objects.create(
+                whatsapp_number=sender_number,
+                name=name,
+                current_state='property_name',
+                context_data=unidentified.context_data
+            )
+            
+            # Delete the unidentified user as we've now created a proper landlord
+            unidentified.delete()
+            
+        except UnidentifiedUser.DoesNotExist:
+            # Maybe the landlord already exists but needs name update
+            try:
+                landlord = Landlord.objects.get(whatsapp_number=sender_number)
+                landlord.name = name
+                landlord.current_state = 'property_name'
+                landlord.save()
+            except Landlord.DoesNotExist:
+                # This shouldn't happen in normal flow, but handle it just in case
+                landlord = Landlord.objects.create(
+                    whatsapp_number=sender_number,
+                    name=name,
+                    current_state='property_name'
+                )
         
         # Move to property registration
         send_whatsapp_message(
-            sender_number, 
+            sender_number,
             f"Thank you, {name}! Now let's add your first property. Please enter the property name:"
         )
-        session.current_state = 'property_name'
-        session.save()
         
-        return {'status': 'landlord_created'}
+        return {"status": "landlord_created"}
     
-    def handle_property_name(self, message_text, sender_number, session):
+    def handle_property_name(self, message_text, sender_number):
         """Handle collecting property name."""
         property_name = message_text.strip()
         
         if not property_name:
             send_whatsapp_message(sender_number, "Please enter a valid property name.")
-            return {'status': 'invalid_property_name'}
+            return {"status": "invalid_property_name"}
         
-        # Store property name in session context
-        session.context_data['property_name'] = property_name
-        session.current_state = 'property_address'
-        session.save()
+        # Get landlord by phone number
+        landlord = Landlord.objects.get(whatsapp_number=sender_number)
         
-        send_whatsapp_message(
-            sender_number, 
-            "Please enter the property address (Country-town-quarter-PO. Box):"
-        )
-        
-        return {'status': 'property_name_received'}
-    
-    def handle_property_address(self, message_text, sender_number, session):
-        """Handle collecting property address."""
-        property_address = message_text.strip()
-        
-        if not property_address:
-            send_whatsapp_message(sender_number, "Please enter a valid property address.")
-            return {'status': 'invalid_property_address'}
-        
-        # Get the landlord
-        try:
-            landlord = Landlord.objects.get(whatsapp_number=sender_number)
-        except Landlord.DoesNotExist:
-            # This shouldn't happen, but just in case
-            session.current_state = 'welcome'
-            session.save()
-            return self.handle_welcome(message_text, sender_number, session)
-        
-        # Create the property
-        property_name = session.context_data.get('property_name')
-        property_obj = Property.objects.create(
-            name=property_name,
-            address=property_address,
-            landlord=landlord
-        )
-        
-        # Move to rent entity registration
-        send_whatsapp_message(
-            sender_number, 
-            "Property registered successfully! Now let's add a rent entity. "
-            "What are you renting out? (e.g., apartment, room, shop, etc.)"
-        )
-        session.current_state = 'rent_entity_name'
-        session.context_data['property_id'] = property_obj.id
-        session.save()
-        
-        return {'status': 'property_created'}
-    
-    def handle_rent_entity_name(self, message_text, sender_number, session):
-        """Handle collecting rent entity name."""
-        rent_entity_name = message_text.strip()
-        
-        if not rent_entity_name:
-            send_whatsapp_message(sender_number, "Please enter a valid rent entity name.")
-            return {'status': 'invalid_rent_entity_name'}
-        
-        # Store rent entity name in session context
-        session.context_data['rent_entity_name'] = rent_entity_name
-        session.current_state = 'rent_entity_price'
-        session.save()
+        # Store property name in context for next step
+        landlord.context_data['property_name'] = property_name
+        landlord.current_state = 'property_address'
+        landlord.save()
         
         send_whatsapp_message(
-            sender_number, 
-            f"What is the monthly rent amount for this {rent_entity_name}? (Enter numbers only)"
+            sender_number,
+            f"Great! Now please enter the address for '{property_name}':"
         )
         
-        return {'status': 'rent_entity_name_received'}
+        return {"status": "property_name_saved"}
     
-    def handle_rent_entity_price(self, message_text, sender_number, session):
-        """Handle collecting rent entity price."""
-        try:
-            rent_amount = float(message_text.strip())
-            if rent_amount <= 0:
-                raise ValueError("Rent amount must be positive")
-        except ValueError:
-            send_whatsapp_message(sender_number, "Please enter a valid rent amount (numbers only).")
-            return {'status': 'invalid_rent_amount'}
+    def handle_property_address(self, message_text, sender_number):  
+        """Handle collecting property address."""  
+        address = message_text.strip()  
         
-        # Create the rent entity
-        try:
-            property_id = session.context_data.get('property_id')
-            property_obj = Property.objects.get(id=property_id)
-            
-            rent_entity_name = session.context_data.get('rent_entity_name')
-            rent_entity = RentEntity.objects.create(
-                name=rent_entity_name,
-                rent_amount=rent_amount,
-                property=property_obj
-            )
-            
-            # Store rent entity ID in session context
-            session.context_data['rent_entity_id'] = rent_entity.id
-            session.current_state = 'tenant_name'
-            session.save()
-            
-            send_whatsapp_message(
-                sender_number, 
-                f"Great! Now let's add a tenant for this {rent_entity_name}. What is the tenant's name?"
-            )
-            
-            return {'status': 'rent_entity_created'}
-            
-        except Property.DoesNotExist:
-            send_whatsapp_message(
-                sender_number, 
-                "Sorry, there was an error with your property information. Let's start again."
-            )
-            session.current_state = 'property_name'
-            session.save()
-            return {'status': 'property_not_found'}
+        if not address:  
+            send_whatsapp_message(sender_number, "Please enter a valid address.")  
+            return {"status": "invalid_address"}  
+        
+        # Get landlord by phone number  
+        try:  
+            landlord = Landlord.objects.get(whatsapp_number=sender_number)  
+        except Landlord.DoesNotExist:  
+            send_whatsapp_message(sender_number, "Landlord not found. Please verify your account.")  
+            return {"status": "landlord_not_found"}  
+        
+        # Create the property  
+        property_name = landlord.context_data.get('property_name')  
+        property_obj = Property.objects.create(  
+            name=property_name,  
+            address=address,  
+            landlord=landlord  
+        )  
+        
+        # Clear the temporary property name from context  
+        if 'property_name' in landlord.context_data:  
+            del landlord.context_data['property_name']  
+        
+        landlord.current_state = 'rent_entity'  
+        landlord.save()  
+        
+        send_whatsapp_message(  
+            sender_number,  
+            f"Property '{property_name}' has been added successfully! What would you like to do next?\n1. Add another property\n2. Add rent entity to {property_name}\n3. Return to main menu"  
+        )  
+        
+        return {"status": "property_added"}  
+
+    def handle_rent_entity_name(self, message_text, sender_number):  
+        """Handle collecting rent entity name."""  
+        rent_entity_name = message_text.strip()  
+        
+        if not rent_entity_name:  
+            send_whatsapp_message(sender_number, "Please enter a valid rent entity name.")  
+            return {'status': 'invalid_rent_entity_name'}  
+        
+        # Get landlord by phone number  
+        try:  
+            landlord = Landlord.objects.get(whatsapp_number=sender_number)  
+        except Landlord.DoesNotExist:  
+            send_whatsapp_message(sender_number, "Landlord not found. Please verify your account.")  
+            return {'status': 'landlord_not_found'}  
+
+        # Store the rent entity name in context data for creation later  
+        landlord.context_data['rent_entity_name'] = rent_entity_name  
+
+        # Update current state to expect rent amount next  
+        landlord.current_state = 'rent_entity_price'  
+        landlord.save()  
+        
+        send_whatsapp_message(  
+            sender_number,   
+            f"What is the monthly rent amount for '{rent_entity_name}'? (Enter numbers only)"  
+        )  
+        
+        return {'status': 'rent_entity_name_received'}  
     
-    def handle_tenant_name(self, message_text, sender_number, session):
-        """Handle collecting tenant name."""
-        tenant_name = message_text.strip()
+    def handle_rent_entity_price(self, message_text, sender_number):  
+        """Handle collecting rent entity price."""  
+        try:  
+            rent_amount = float(message_text.strip())  
+            if rent_amount <= 0:  
+                raise ValueError("Rent amount must be positive")  
+        except ValueError:  
+            send_whatsapp_message(sender_number, "Please enter a valid rent amount (numbers only).")  
+            return {'status': 'invalid_rent_amount'}  
+
+        # Get landlord by phone number  
+        try:  
+            landlord = Landlord.objects.get(whatsapp_number=sender_number)  
+        except Landlord.DoesNotExist:  
+            send_whatsapp_message(sender_number, "Landlord not found. Please verify your account.")  
+            return {'status': 'landlord_not_found'}  
+
+        # Retrieve rent entity name and property from context data  
+        rent_entity_name = landlord.context_data.get('rent_entity_name')  
+        property_obj_id = landlord.context_data.get('property_id')  # Assuming you save the property ID in context data.  
+
+        if not property_obj_id:  
+            send_whatsapp_message(sender_number, "Property information not found. Please start again.")  
+            landlord.current_state = 'property_name'  
+            landlord.save()  
+            return {'status': 'property_not_found'}  
+
+        # Get the property object  
+        try:  
+            property_obj = Property.objects.get(id=property_obj_id)  
+        except Property.DoesNotExist:  
+            send_whatsapp_message(sender_number, "Sorry, there was an error with your property information. Let's start again.")  
+            landlord.current_state = 'property_name'  
+            landlord.save()  
+            return {'status': 'property_not_found'}  
+
+        # Create the rent entity  
+        rent_entity = RentEntity.objects.create(  
+            name=rent_entity_name,  
+            rent_amount=rent_amount,  
+            property=property_obj  
+        )  
+
+        # Clear the rent entity name from context data if needed  
+        if 'rent_entity_name' in landlord.context_data:  
+            del landlord.context_data['rent_entity_name']  
+
+        # Update landlord's state  
+        landlord.current_state = 'tenant_name'  
+        landlord.save()  
+
+        send_whatsapp_message(  
+            sender_number,   
+            f"Great! Now let's add a tenant for this {rent_entity_name}. What is the tenant's name?"  
+        )  
         
-        if not tenant_name:
-            send_whatsapp_message(sender_number, "Please enter a valid tenant name.")
-            return {'status': 'invalid_tenant_name'}
-        
-        # Store tenant name in session context
-        session.context_data['tenant_name'] = tenant_name
-        session.current_state = 'tenant_whatsapp'
-        session.save()
-        
-        send_whatsapp_message(
-            sender_number, 
-            "What is the tenant's WhatsApp number? (Include country code, e.g., +1234567890)"
-        )
-        
-        return {'status': 'tenant_name_received'}
+        return {'status': 'rent_entity_created'}
     
-    def handle_tenant_whatsapp(self, message_text, sender_number, session):
-        """Handle collecting tenant WhatsApp number."""
-        tenant_whatsapp = message_text.strip()
+    def handle_tenant_name(self, message_text, sender_number):  
+        """Handle collecting tenant name."""  
+        tenant_name = message_text.strip()  
         
-        # Basic validation for WhatsApp number
-        if not tenant_whatsapp.startswith('+') or len(tenant_whatsapp) < 10:
-            send_whatsapp_message(
-                sender_number, 
-                "Please enter a valid WhatsApp number including country code (e.g., +1234567890)."
-            )
-            return {'status': 'invalid_whatsapp_number'}
+        if not tenant_name:  
+            send_whatsapp_message(sender_number, "Please enter a valid tenant name.")  
+            return {'status': 'invalid_tenant_name'}  
+
+        # Get landlord by phone number  
+        try:  
+            landlord = Landlord.objects.get(whatsapp_number=sender_number)  
+        except Landlord.DoesNotExist:  
+            send_whatsapp_message(sender_number, "Landlord not found. Please verify your account.")  
+            return {'status': 'landlord_not_found'}  
+
+        # Store tenant name in landlord's context data  
+        landlord.context_data['tenant_name'] = tenant_name  
+        landlord.current_state = 'tenant_whatsapp'  
+        landlord.save()  
         
-        # Store tenant WhatsApp in session context
-        session.context_data['tenant_whatsapp'] = tenant_whatsapp
-        session.current_state = 'payment_cycle_start'
-        session.save()
+        send_whatsapp_message(  
+            sender_number,   
+            "What is the tenant's WhatsApp number? (Include country code, e.g., +12364567890)"  
+        )  
         
-        send_whatsapp_message(
-            sender_number, 
-            "When did the tenant's payment cycle start? (Enter date in format YYYY-MM-DD)"
-        )
+        return {'status': 'tenant_name_received'} 
+    
+    def handle_tenant_whatsapp(self, message_text, sender_number):  
+        """Handle collecting tenant WhatsApp number."""  
+        tenant_whatsapp = message_text.strip()  
+
+        # Basic validation for WhatsApp number  
+        if not tenant_whatsapp.startswith('+') or len(tenant_whatsapp) < 10:  
+            send_whatsapp_message(  
+                sender_number,   
+                "Please enter a valid WhatsApp number including country code (e.g., +1234567890)."  
+            )  
+            return {'status': 'invalid_whatsapp_number'}  
+        
+        # Get landlord by phone number  
+        try:  
+            landlord = Landlord.objects.get(whatsapp_number=sender_number)  
+        except Landlord.DoesNotExist:  
+            send_whatsapp_message(sender_number, "Landlord not found. Please verify your account.")  
+            return {'status': 'landlord_not_found'}  
+
+        # Store tenant WhatsApp in context data  
+        landlord.context_data['tenant_whatsapp'] = tenant_whatsapp  
+        landlord.current_state = 'payment_cycle_start'  
+        landlord.save()  
+        
+        send_whatsapp_message(  
+            sender_number,   
+            "When did the tenant's payment cycle start? (Enter date in format YYYY-MM-DD)"  
+        )  
         
         return {'status': 'tenant_whatsapp_received'}
     
-    def handle_payment_cycle_start(self, message_text, sender_number, session):
-        """Handle collecting payment cycle start date."""
-        try:
-            start_date = timezone.datetime.strptime(message_text.strip(), '%Y-%m-%d').date()
-        except ValueError:
-            send_whatsapp_message(
-                sender_number, 
-                "Please enter a valid date in format YYYY-MM-DD (e.g., 2025-03-01)."
-            )
-            return {'status': 'invalid_start_date'}
-        
-        # Store start date in session context
-        session.context_data['start_date'] = message_text.strip()
-        session.current_state = 'bills_due_date'
-        session.save()
-        
-        send_whatsapp_message(
-            sender_number, 
-            "When is the bills due date? (Enter date in format YYYY-MM-DD)"
-        )
-        
+    def handle_payment_cycle_start(self, message_text, sender_number):  
+        """Handle collecting payment cycle start date."""  
+        try:  
+            start_date = timezone.datetime.strptime(message_text.strip(), '%Y-%m-%d').date()  
+        except ValueError:  
+            send_whatsapp_message(  
+                sender_number,   
+                "Please enter a valid date in format YYYY-MM-DD (e.g., 2025-03-01)."  
+            )  
+            return {'status': 'invalid_start_date'}  
+
+        # Get landlord by phone number  
+        try:  
+            landlord = Landlord.objects.get(whatsapp_number=sender_number)  
+        except Landlord.DoesNotExist:  
+            send_whatsapp_message(sender_number, "Landlord not found. Please verify your account.")  
+            return {'status': 'landlord_not_found'}  
+
+        # Store start date in context data  
+        landlord.context_data['start_date'] = message_text.strip()  
+        landlord.current_state = 'bills_due_date'  
+        landlord.save()  
+
+        send_whatsapp_message(  
+            sender_number,   
+            "When is the bills due date? (Enter date in format YYYY-MM-DD)"  
+        )  
+
         return {'status': 'start_date_received'}
-    
-    def handle_bills_due_date(self, message_text, sender_number, session):
-        """Handle collecting bills due date."""
-        try:
-            bills_date = timezone.datetime.strptime(message_text.strip(), '%Y-%m-%d').date()
-        except ValueError:
-            send_whatsapp_message(
-                sender_number, 
-                "Please enter a valid date in format YYYY-MM-DD (e.g., 2025-03-15)."
-            )
-            return {'status': 'invalid_bills_date'}
         
-        # Store bills date in session context
-        session.context_data['bills_date'] = message_text.strip()
-        session.current_state = 'last_payment_date'
-        session.save()
-        
-        send_whatsapp_message(
-            sender_number, 
-            "When was the last payment made? (Enter date in format YYYY-MM-DD, or type 'none' if no payment yet)"
-        )
-        
+        def handle_bills_due_date(self, message_text, sender_number):  
+        """Handle collecting bills due date."""  
+        try:  
+            bills_date = timezone.datetime.strptime(message_text.strip(), '%Y-%m-%d').date()  
+        except ValueError:  
+            send_whatsapp_message(  
+                sender_number,   
+                "Please enter a valid date in format YYYY-MM-DD (e.g., 2025-03-15)."  
+            )  
+            return {'status': 'invalid_bills_date'}  
+
+        # Get landlord by phone number  
+        try:  
+            landlord = Landlord.objects.get(whatsapp_number=sender_number)  
+        except Landlord.DoesNotExist:  
+            send_whatsapp_message(sender_number, "Landlord not found. Please verify your account.")  
+            return {'status': 'landlord_not_found'}  
+
+        # Store bills date in context data  
+        landlord.context_data['bills_date'] = message_text.strip()  
+        landlord.current_state = 'last_payment_date'  
+        landlord.save()  
+
+        send_whatsapp_message(  
+            sender_number,   
+            "When was the last payment made? (Enter date in format YYYY-MM-DD, or type 'none' if no payment yet)"  
+        )  
+
         return {'status': 'bills_date_received'}
+
+    def handle_last_payment_date(self, message_text, sender_number):  
+    """Handle collecting last payment date."""  
+    message_text = message_text.strip().lower()  
+
+    # Get landlord by phone number  
+    try:  
+        landlord = Landlord.objects.get(whatsapp_number=sender_number)  
+    except Landlord.DoesNotExist:  
+        send_whatsapp_message(sender_number, "Landlord not found. Please verify your account.")  
+        return {'status': 'landlord_not_found'}  
+
+    # Handle 'none' input or parse the date  
+    if message_text == 'none':  
+        landlord.context_data['last_payment'] = None  
+    else:  
+        try:  
+            last_payment = timezone.datetime.strptime(message_text, '%Y-%m-%d').date()  
+            landlord.context_data['last_payment'] = last_payment  
+        except ValueError:  
+            send_whatsapp_message(  
+                sender_number,  
+                "Please enter a valid date in format YYYY-MM-DD (e.g., 2025-02-15) or type 'none'."  
+            )  
+            return {'status': 'invalid_last_payment_date'}  
+
+    # Update the landlord's current state  
+    landlord.current_state = 'initial'  
+    landlord.save()  
+
+    return {'status': 'last_payment_received'}  
     
-    def handle_last_payment_date(self, message_text, sender_number, session):
-        """Handle collecting last payment date."""
-        message_text = message_text.strip().lower()
-        
-        if message_text == 'none':
-            session.context_data['last_payment'] = None
-        else:
-            try:
-                last_payment = timezone.datetime.strptime(message_text, '%Y-%m-%d').date()
-                session.context_data['last_payment'] = message_text
-            except ValueError:
-                send_whatsapp_message(
-                    sender_number, 
-                    "Please enter a valid date in format YYYY-MM-DD (e.g., 2025-02-15) or type 'none'."
-                )
-                return {'status': 'invalid_last_payment_date'}
-        
-        session.current_state = 'payment_cycle_months'
-        session.save()
-        
-        send_whatsapp_message(
-            sender_number, 
-            "How many months has the tenant paid for? (Enter a number)"
-        )
-        
-        return {'status': 'last_payment_received'}
+    def handle_payment_cycle_months(self, message_text, sender_number):  
+    """Handle collecting payment cycle months."""  
+    try:  
+        months = int(message_text.strip())  
+        if months < 0:  
+            raise ValueError("Months must be non-negative")  
+    except ValueError:  
+        send_whatsapp_message(sender_number, "Please enter a valid number of months.")  
+        return {'status': 'invalid_months'}  
     
-    def handle_payment_cycle_months(self, message_text, sender_number, session):
-        """Handle collecting payment cycle months."""
-        try:
-            months = int(message_text.strip())
-            if months < 0:
-                raise ValueError("Months must be non-negative")
-        except ValueError:
-            send_whatsapp_message(sender_number, "Please enter a valid number of months.")
-            return {'status': 'invalid_months'}
-        
-        # Create the tenant with all collected information
-        try:
-            with transaction.atomic():
-                # Get the rent entity
-                rent_entity_id = session.context_data.get('rent_entity_id')
-                rent_entity = RentEntity.objects.get(id=rent_entity_id)
-                
-                # Get dates from session context
-                start_date = timezone.datetime.strptime(
-                    session.context_data.get('start_date'), '%Y-%m-%d'
-                ).date()
-                bills_date = timezone.datetime.strptime(
-                    session.context_data.get('bills_date'), '%Y-%m-%d'
-                ).date()
-                
-                last_payment = None
-                if session.context_data.get('last_payment'):
-                    last_payment = timezone.datetime.strptime(
-                        session.context_data.get('last_payment'), '%Y-%m-%d'
-                    ).date()
-                
-                # Create tenant
-                tenant = Tenant.objects.create(
-                    rent_entity=rent_entity,
-                    name=session.context_data.get('tenant_name'),
-                    whatsapp_number=session.context_data.get('tenant_whatsapp'),
-                    start_of_payment_cycle=start_date,
-                    bills_due_date=bills_date,
-                    last_rent_paid=last_payment,
-                    last_bill_paid=last_payment,
-                    payment_cycle_months=months
-                )
-                
-                # Send confirmation to the tenant
-                tenant_message = (
-                    f"Dear {tenant.name}, you have been registered as a tenant by "
-                    f"{rent_entity.property.landlord.name} for {rent_entity.name} at "
-                    f"{rent_entity.property.name}. Your rent is {rent_entity.rent_amount} per month."
-                )
-                send_whatsapp_message(tenant.whatsapp_number, tenant_message)
-                
-                # Send main menu to landlord
-                menu_text = landlord_main_menu(rent_entity.property.landlord.name)
-                send_whatsapp_message(sender_number, menu_text)
-                
-                # Update session state
-                session.current_state = 'main_menu'
-                session.save()
-                
-                return {'status': 'tenant_created'}
-                
-        except Exception as e:
-            print(f"Error creating tenant: {str(e)}")
-            send_whatsapp_message(
-                sender_number, 
-                "Sorry, there was an error creating the tenant. Let's try again."
-            )
-            session.current_state = 'tenant_name'
-            session.save()
-            return {'status': 'tenant_creation_error'}
+    # Create the tenant with all collected information  
+    try:  
+        with transaction.atomic():  
+            # Get landlord by phone number  
+            landlord = Landlord.objects.get(whatsapp_number=sender_number)  
+            
+            # Get the rent entity ID from context data  
+            rent_entity_id = landlord.context_data.get('rent_entity_id')  
+            rent_entity = RentEntity.objects.get(id=rent_entity_id)  
+            
+            # Get dates from context data  
+            start_date = timezone.datetime.strptime(  
+                landlord.context_data.get('start_date'), '%Y-%m-%d'  
+            ).date()  
+            bills_date = timezone.datetime.strptime(  
+                landlord.context_data.get('bills_date'), '%Y-%m-%d'  
+            ).date()  
+            
+            last_payment = None  
+            if landlord.context_data.get('last_payment'):  
+                last_payment = timezone.datetime.strptime(  
+                    landlord.context_data.get('last_payment'), '%Y-%m-%d'  
+                ).date()  
+            
+            # Create tenant  
+            tenant = Tenant.objects.create(  
+                rent_entity=rent_entity,  
+                name=landlord.context_data.get('tenant_name'),  
+                whatsapp_number=landlord.context_data.get('tenant_whatsapp'),  
+                start_of_payment_cycle=start_date,  
+                bills_due_date=bills_date,  
+                last_rent_paid=last_payment,  
+                last_bill_paid=last_payment,  
+                payment_cycle_months=months  
+            )  
+            
+            # Send confirmation to the tenant  
+            tenant_message = (  
+                f"Dear {tenant.name}, you have been registered as a tenant by "  
+                f"{rent_entity.property.landlord.name} for {rent_entity.name} at "  
+                f"{rent_entity.property.name}. Your rent is {rent_entity.rent_amount} per month."  
+            )  
+            send_whatsapp_message(tenant.whatsapp_number, tenant_message)  
+            
+            # Inform the landlord and send the main menu  
+            menu_text = landlord_main_menu(rent_entity.property.landlord.name)  
+            send_whatsapp_message(sender_number, menu_text)  
+
+            # Update landlord's state  
+            landlord.current_state = 'main_menu'  
+            landlord.save()  
+            
+            return {'status': 'tenant_created'}  
+            
+    except Exception as e:  
+        print(f"Error creating tenant: {str(e)}")  
+        send_whatsapp_message(  
+            sender_number,   
+            "Sorry, there was an error creating the tenant. Let's try again."  
+        )  
+        landlord.current_state = 'tenant_name'  # Reset to the previous state  
+        landlord.save()  
+        return {'status': 'tenant_creation_error'}  
     
     def handle_main_menu(self, message_text, sender_number, session):
         """Handle the main menu options for landlords."""

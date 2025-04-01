@@ -64,7 +64,8 @@ INSTALLED_APPS = [
     #ADDED APPLICATIONS
     'properties', 
     'rest_framework',
-    'landing_page' 
+    'landing_page',
+    'rest_framework.authtoken'
 ]
 
 MIDDLEWARE = [
