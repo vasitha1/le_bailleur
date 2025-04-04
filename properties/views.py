@@ -272,38 +272,42 @@ class WhatsAppWebhook(APIView):
             # If we reach here, no valid message was processed
             return Response({"status": "no_valid_messages"}, status=200)
 
+        except Exception as e:
+            logging.error(f"Error processing webhook: {str(e)}")
+            return Response({"error": str(e)}, status=500)
+
 
     def update_last_activity(self, sender_number, user_type):
-    """Update the last activity timestamp for a user"""
-    try:
-        current_time = timezone.now()
-        
-        if user_type == 'landlord':
-            try:
-                landlord = Landlord.objects.get(whatsapp_number=sender_number)
-                landlord.last_activity = current_time
-                landlord.save()
-                logging.info(f"Updated last activity for landlord {sender_number}")
-            except Landlord.DoesNotExist:
-                logging.warning(f"Attempted to update last activity for non-existent landlord: {sender_number}")
-        
-        elif user_type == 'tenant':
-            try:
-                tenant = Tenant.objects.get(whatsapp_number=sender_number)
-                tenant.last_activity = current_time
-                tenant.save()
-                logging.info(f"Updated last activity for tenant {sender_number}")
-            except Tenant.DoesNotExist:
-                logging.warning(f"Attempted to update last activity for non-existent tenant: {sender_number}")
-        
-        else:
-            # Handle unidentified user types
-            logging.warning(f"Cannot update last activity for unknown user type: {user_type}, number: {sender_number}")
+        """Update the last activity timestamp for a user"""
+        try:
+            current_time = timezone.now()
             
-    except Exception as e:
-        # Catch any other errors that might occur
-        logging.error(f"Error updating last activity for {user_type} {sender_number}: {str(e)}")
-        # We don't re-raise the exception to prevent breaking the main flow                            
+            if user_type == 'landlord':
+                try:
+                    landlord = Landlord.objects.get(whatsapp_number=sender_number)
+                    landlord.last_activity = current_time
+                    landlord.save()
+                    logging.info(f"Updated last activity for landlord {sender_number}")
+                except Landlord.DoesNotExist:
+                    logging.warning(f"Attempted to update last activity for non-existent landlord: {sender_number}")
+            
+            elif user_type == 'tenant':
+                try:
+                    tenant = Tenant.objects.get(whatsapp_number=sender_number)
+                    tenant.last_activity = current_time
+                    tenant.save()
+                    logging.info(f"Updated last activity for tenant {sender_number}")
+                except Tenant.DoesNotExist:
+                    logging.warning(f"Attempted to update last activity for non-existent tenant: {sender_number}")
+            
+            else:
+                # Handle unidentified user types
+                logging.warning(f"Cannot update last activity for unknown user type: {user_type}, number: {sender_number}")
+                
+        except Exception as e:
+            # Catch any other errors that might occur
+            logging.error(f"Error updating last activity for {user_type} {sender_number}: {str(e)}")
+            # We don't re-raise the exception to prevent breaking the main flow                            
 
             
     def handle_message(self, message_text, sender_number):
