@@ -179,8 +179,9 @@ class WhatsAppWebhook(APIView):
                                         
                                         else:
                                             # Handle unknown users - send registration prompt
-                                            registration_message = "Welcome to our property management system! Please register as either a landlord or tenant by replying with 'register landlord' or 'register tenant'."
+                                            registration_message = "Welcome! I am \'LeBailleur\', your rent management automatic assistant. I can help you track rent payments, send notifications, and manage your properties.\n\n Please type\n1-If you are a landlord\n2-If you are a tenant"
                                             send_whatsapp_message(sender_number, registration_message)
+                                            current_state = 'initial'
                                             return Response({"status": "registration_prompt_sent"})
                                     
                                         # Process message based on current state
