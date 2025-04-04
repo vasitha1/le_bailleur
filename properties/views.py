@@ -141,101 +141,170 @@ class WhatsAppWebhook(APIView):
 
                                 if message_type == 'text':
                                     logging.info(f"Message content: {message_text}")
-                                    # Now we can process the message using the handling functionality
                                     
-                                    # Determine the user type
-                                    user_type = self.get_user_type(sender_number)
-
-                                    # Get current state for landlord or tenant
-                                    if user_type == 'landlord':
-                                        landlord = Landlord.objects.get(whatsapp_number=sender_number)
-                                        current_state = landlord.current_state
-                                    else:
-                                        tenant = Tenant.objects.get(whatsapp_number=sender_number)
-                                        current_state = tenant.current_state
+                                    try:
+                                        # Determine the user type and handle new users
+                                        user_type = self.get_user_type(sender_number)
                                     
-                                    # Process message based on current state
-                                    if current_state == 'initial':
-                                        if message_text.lower() in ['hi', 'hello', 'start', 'hey']:
-                                            send_whatsapp_message(sender_number, welcome_message)
-                                            return Response({"status": "welcome_sent"})
-                                        else:
-                                            # Check for session expiration before handling message
-                                            if self.is_expired(sender_number):
-                                                # Reset state to initial and inform user
-                                                self.reset_user_state(sender_number)
-                                                send_whatsapp_message(
-                                                    sender_number,
-                                                    "Your session has expired due to inactivity. Welcome back to the main menu."
-                                                )
-                                                return Response({"status": "session_expired"})
+                                        # Get current state for landlord or tenant
+                                        current_state = 'initial'  # Default state for new users
                                         
-                                        # For landlords, go directly to main menu instead of initial state
-                                        return self.handle_main_menu(message_text, sender_number)
+                                        if user_type == 'landlord':
+                                            try:
+                                                landlord = Landlord.objects.get(whatsapp_number=sender_number)
+                                                current_state = landlord.current_state
+                                            except Landlord.DoesNotExist:
+                                                # Create new landlord record if it doesn't exist
+                                                landlord = Landlord.objects.create(
+                                                    whatsapp_number=sender_number,
+                                                    current_state='initial',
+                                                    last_activity=timezone.now()
+                                                )
+                                                send_whatsapp_message(sender_number, "Welcome! You're registered as a new landlord.")
+                                                return Response({"status": "new_landlord_registered"})
+                                        
+                                        elif user_type == 'tenant':
+                                            try:
+                                                tenant = Tenant.objects.get(whatsapp_number=sender_number)
+                                                current_state = tenant.current_state
+                                            except Tenant.DoesNotExist:
+                                                # Create new tenant record if it doesn't exist
+                                                tenant = Tenant.objects.create(
+                                                    whatsapp_number=sender_number,
+                                                    current_state='initial',
+                                                    last_activity=timezone.now()
+                                                )
+                                                send_whatsapp_message(sender_number, "Welcome! You're registered as a new tenant.")
+                                                return Response({"status": "new_tenant_registered"})
+                                        
+                                        else:
+                                            # Handle unknown users - send registration prompt
+                                            registration_message = "Welcome to our property management system! Please register as either a landlord or tenant by replying with 'register landlord' or 'register tenant'."
+                                            send_whatsapp_message(sender_number, registration_message)
+                                            return Response({"status": "registration_prompt_sent"})
                                     
-                                    elif current_state == 'landlord_name':
-                                        result = self.handle_landlord_name(message_text, sender_number)
-                                    
-                                    elif current_state == 'property_name':
-                                        result = self.handle_property_name(message_text, sender_number)
+                                        # Process message based on current state
+                                        if current_state == 'initial':
+                                            send_whatsapp_message(sender_number, welcome_message)
+                                            
+                                            # Update state
+                                            if user_type == 'landlord':
+                                                landlord.current_state = 'welcome'
+                                                landlord.save()
+                                            elif user_type == 'tenant':
+                                                tenant.current_state = 'welcome'
+                                                tenant.save()
+                                                
+                                            return Response({"status": "welcome_sent"})
+                                        
+                                        # Handle session expiration
+                                        if self.is_expired(sender_number):
+                                            # Reset state to initial and inform user
+                                            self.reset_user_state(sender_number)
+                                            send_whatsapp_message(
+                                                sender_number,
+                                                "Your session has expired due to inactivity. Welcome back to the main menu."
+                                            )
+                                            return Response({"status": "session_expired"})
+                                        
+                                        # Handle different states
+                                        if current_state == 'welcome':
+                                            result = self.handle_main_menu(message_text, sender_number)
+                                        
+                                        elif current_state == 'landlord_name':
+                                            result = self.handle_landlord_name(message_text, sender_number)
+                                        
+                                        elif current_state == 'property_name':
+                                            result = self.handle_property_name(message_text, sender_number)
 
-                                    elif current_state == 'property_address':
-                                        result = self.handle_property_address(message_text, sender_number)
+                                        elif current_state == 'property_address':
+                                            result = self.handle_property_address(message_text, sender_number)
 
-                                    elif current_state == 'welcome':
-                                        result = self.handle_main_menu(message_text, sender_number)
+                                        elif current_state == 'landlord_menu':
+                                            result = self.handle_landlord_menu(message_text, sender_number)
 
-                                    elif current_state == 'landlord_menu':
-                                        result = self.handle_landlord_menu(message_text, sender_number)
+                                        elif current_state == 'payment_months':
+                                            result = self.handle_payment_months(message_text, sender_number)
 
-                                    elif current_state == 'payment_months':
-                                        result = self.handle_payment_months(message_text, sender_number)
+                                        elif current_state == 'payment_amount_confirmation':
+                                            result = self.handle_payment_amount_confirmation(message_text, sender_number)
 
-                                    elif current_state == 'payment_amount_confirmation':
-                                        result = self.handle_payment_amount_confirmation(message_text, sender_number)
+                                        elif current_state == 'payment_modification':
+                                            result = self.handle_payment_modification(message_text, sender_number)
 
-                                    elif current_state == 'payment_modification':
-                                        result = self.handle_payment_modification(message_text, sender_number)
+                                        elif current_state == 'property_delete_selection':
+                                            result = self.handle_property_delete_selection(message_text, sender_number)
 
-                                    elif current_state == 'property_delete_selection':
-                                        result = self.handle_property_delete_selection(message_text, sender_number)
+                                        elif current_state == 'property_delete_confirmation':
+                                            result = self.handle_property_delete_confirmation(message_text, sender_number)
 
-                                    elif current_state == 'property_delete_confirmation':
-                                        result = self.handle_property_delete_confirmation(message_text, sender_number)
+                                        elif current_state == 'adding_property':
+                                            result = self.handle_property_addition(message_text, sender_number)
 
-                                    elif current_state == 'adding_property':
-                                        result = self.handle_property_addition(message_text, sender_number)
+                                        elif current_state == 'modifying_property':
+                                            result = self.handle_property_modification(message_text, sender_number)
 
-                                    elif current_state == 'modifying_property':
-                                        result = self.handle_property_modification(message_text, sender_number)
+                                        elif current_state == 'viewing_payments':
+                                            result = self.handle_view_payments(message_text, sender_number)
 
-                                    elif current_state == 'viewing_payments':
-                                        result = self.handle_view_payments(message_text, sender_number)
+                                        elif current_state == 'setting_reminders':
+                                            result = self.handle_set_reminders(message_text, sender_number)
 
-                                    elif current_state == 'setting_reminders':
-                                        result = self.handle_set_reminders(message_text, sender_number)
+                                        else:
+                                            # Default handling for unknown states
+                                            send_whatsapp_message(sender_number, "I'm not sure how to respond to that. Please type 'help' for assistance.")
+                                            return Response({"status": "unknown_state"})
 
-                                    else:
-                                        # Default handling for unknown states
-                                        send_whatsapp_message(sender_number, "I'm not sure how to respond to that. Please type 'help' for assistance.")
-                                        return Response({"status": "unknown_state"})
-
-                                    # Save the current state for landlord or tenant
-                                    if user_type == 'landlord':
-                                        landlord.current_state = current_state  # Update to the new state
-                                        landlord.save()
-                                    elif user_type == 'tenant':
-                                        tenant.current_state = current_state  # Update to the new state
-                                        tenant.save()
-
-                                    return Response({"status": result})
+                                        # Update the last activity timestamp
+                                        self.update_last_activity(sender_number, user_type)
+                                        
+                                        return Response({"status": result})
+                                        
+                                    except Exception as e:
+                                        logging.error(f"Error processing message: {str(e)}")
+                                        # Send a friendly error message to the user
+                                        send_whatsapp_message(
+                                            sender_number, 
+                                            "Sorry, we encountered an error processing your message. Please try again or contact support."
+                                        )
+                                        return Response({"error": str(e)}, status=500)
             
             # If we reach here, no valid message was processed
             return Response({"status": "no_valid_messages"}, status=200)
-                                    
-        except Exception as e:
-            logging.error(f"Error processing webhook: {str(e)}")
-            return Response({"error": str(e)}, status=500)
+
+
+    def update_last_activity(self, sender_number, user_type):
+    """Update the last activity timestamp for a user"""
+    try:
+        current_time = timezone.now()
+        
+        if user_type == 'landlord':
+            try:
+                landlord = Landlord.objects.get(whatsapp_number=sender_number)
+                landlord.last_activity = current_time
+                landlord.save()
+                logging.info(f"Updated last activity for landlord {sender_number}")
+            except Landlord.DoesNotExist:
+                logging.warning(f"Attempted to update last activity for non-existent landlord: {sender_number}")
+        
+        elif user_type == 'tenant':
+            try:
+                tenant = Tenant.objects.get(whatsapp_number=sender_number)
+                tenant.last_activity = current_time
+                tenant.save()
+                logging.info(f"Updated last activity for tenant {sender_number}")
+            except Tenant.DoesNotExist:
+                logging.warning(f"Attempted to update last activity for non-existent tenant: {sender_number}")
+        
+        else:
+            # Handle unidentified user types
+            logging.warning(f"Cannot update last activity for unknown user type: {user_type}, number: {sender_number}")
+            
+    except Exception as e:
+        # Catch any other errors that might occur
+        logging.error(f"Error updating last activity for {user_type} {sender_number}: {str(e)}")
+        # We don't re-raise the exception to prevent breaking the main flow                            
+
             
     def handle_message(self, message_text, sender_number):
         """Handle the initial message to determine if user is landlord or tenant."""
