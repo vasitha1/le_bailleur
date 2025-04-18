@@ -15,6 +15,11 @@ from celery import Celery
 from celery.schedules import crontab
 import dj_database_url
 import os
+from dotenv import load_dotenv
+
+
+# Load environment variables from .env file
+load_dotenv()
 
 
 # Initialize the Celery application  
