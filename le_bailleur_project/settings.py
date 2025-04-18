@@ -178,6 +178,11 @@ WHATSAPP_SECRET_KEY = os.getenv('WHATSAPP_SECRET_KEY', '7e5de035-f7ed-4737-b2bf-
 WHATSAPP_VERIFY_TOKEN = '7e5de035-f7ed-4737-b2bf-fc71b9cb1e63'
 
 
+#Twilio:
+account_sid = 'AC3e09abb8cc4542c23dcca15276139c1c'
+auth_token = '43e7ed5eecd9a487d93cbcaace2cf14f'
+
+
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,

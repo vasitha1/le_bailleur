@@ -7,34 +7,29 @@ from datetime import timedelta
 from django.http import HttpResponse
 from django.views.decorators.csrf import csrf_exempt
 import json
+from twilio.rest import Client 
+import logging 
 
 
-def send_whatsapp_message(phone_number, message):
-    """Function to send a message via WhatsApp."""
-    headers = {'Authorization': settings.WHATSAPP_TOKEN}
-    payload = {
-        'messaging_product': 'whatsapp',
-        'recipient_type': 'individual',
-        'to': phone_number,
-        'type': 'text',
-        'text': {'body': message}
-    }
-    
-    try:
-        response = requests.post(settings.WHATSAPP_URL, headers=headers, json=payload)
-        print(f"Response Status Code: {response.status_code}")  # for debugging
-        print(f"Response Content: {response.text}")  # For debugging
+def send_whatsapp_message(phone_number, message):  
+    """Function to send a message via WhatsApp using Twilio."""  
+    client = Client(settings.TWILIO_ACCOUNT_SID, settings.TWILIO_AUTH_TOKEN)  
+
+    try:  
+        # Sending the message  
+        message = client.messages.create(  
+            body=message,  
+            from_='whatsapp:+14155238886',  # Your Twilio WhatsApp sandbox number  
+            to=f'whatsapp:{phone_number}'  # Recipient's WhatsApp number  
+        )  
         
-        if response.status_code == 200:
-            response_json = response.json()
-            print(f"Response JSON: {json.dumps(response_json, indent=2)}")
-            return response_json
-        else:
-            print(f"Error: Non-200 response code")
-            return None
-    except Exception as e:
-        print(f"Exception occurred: {str(e)}")
-        return None
+        # Logging the response for debugging  
+        logging.info(f"Message sent successfully to {phone_number}, SID: {message.sid}")  
+        return message.sid  # Return the message SID for reference  
+    
+    except Exception as e:  
+        logging.error(f"Failed to send message to {phone_number}: {str(e)}")  
+        return None  
 
 def subscribe_to_webhook():  
     """Subscribe your app to the WhatsApp Business Account webhooks."""  
