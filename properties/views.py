@@ -73,7 +73,6 @@ logging.basicConfig(
 class WhatsAppWebhook(APIView):
     """Handle WhatsApp webhook messages after verification."""
     
-    VERIFY_TOKEN = settings.WHATSAPP_VERIFY_TOKEN
         
     def post(self, request):  
         """Handle incoming WhatsApp webhook messages via Twilio."""  
